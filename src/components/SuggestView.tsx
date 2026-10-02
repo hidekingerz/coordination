@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ClothingItem, Formality } from '../types';
 import { ALL_FORMALITIES, CATEGORY_LABEL, FORMALITY_LABEL, SEASON_LABEL, WARMTH_LABEL } from '../types';
 import { buildConditions } from '../lib/season';
+import { getTokyoForecast, isForecastAvailable, toDateKey, type DailyTemperature } from '../lib/weather';
 import { suggestOutfits, type Outfit } from '../lib/outfit';
 import { buildFigure } from '../lib/figure';
 import { OutfitFigure } from './OutfitFigure';
@@ -12,23 +13,64 @@ interface Props {
   wardrobe: ClothingItem[];
 }
 
-function todayStr() {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+type ForecastState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'ok'; data: DailyTemperature }
+  | { status: 'unavailable' }
+  | { status: 'error' };
+
+function parseDate(dateStr: string): Date | null {
+  if (!dateStr) return null;
+  const d = new Date(dateStr + 'T12:00:00');
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 export function SuggestView({ wardrobe }: Props) {
-  const [dateStr, setDateStr] = useState(todayStr());
+  const [dateStr, setDateStr] = useState(() => toDateKey(new Date()));
   const [tempStr, setTempStr] = useState('');
+  const [forecast, setForecast] = useState<ForecastState>({ status: 'idle' });
+  /**
+   * 気温欄の値の出所。手入力なら日付を変えるまで予報で上書きしない。
+   * 予報由来なら日付を変えた時点で消し、古い日の気温が残らないようにする。
+   */
+  const tempSource = useRef<'manual' | 'forecast' | null>(null);
+
+  useEffect(() => {
+    if (tempSource.current === 'forecast') {
+      setTempStr('');
+      tempSource.current = null;
+    }
+    const date = parseDate(dateStr);
+    if (!date || !isForecastAvailable(date)) {
+      setForecast({ status: 'unavailable' });
+      return;
+    }
+    let cancelled = false;
+    setForecast({ status: 'loading' });
+    getTokyoForecast(date)
+      .then((data) => {
+        if (cancelled) return;
+        setForecast({ status: 'ok', data });
+        if (tempSource.current !== 'manual') {
+          setTempStr(String(Math.round(data.max)));
+          tempSource.current = 'forecast';
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setForecast({ status: 'error' });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [dateStr]);
   const [formality, setFormality] = useState<Formality | ''>('');
   const [mustInclude, setMustInclude] = useState<string>('');
   const [results, setResults] = useState<Outfit[] | null>(null);
 
   const conditions = useMemo(() => {
-    const date = dateStr ? new Date(dateStr + 'T12:00:00') : new Date();
     const temp = tempStr.trim() === '' ? undefined : Number(tempStr);
-    return buildConditions(Number.isNaN(date.getTime()) ? new Date() : date, temp);
+    return buildConditions(parseDate(dateStr) ?? new Date(), temp);
   }, [dateStr, tempStr]);
 
   const run = () => {
@@ -61,8 +103,12 @@ export function SuggestView({ wardrobe }: Props) {
               inputMode="decimal"
               placeholder="例: 18"
               value={tempStr}
-              onChange={(e) => setTempStr(e.target.value)}
+              onChange={(e) => {
+                tempSource.current = 'manual';
+                setTempStr(e.target.value);
+              }}
             />
+            <ForecastNote state={forecast} />
           </label>
           <label>
             <span>テイスト</span>
@@ -119,6 +165,25 @@ export function SuggestView({ wardrobe }: Props) {
       )}
     </section>
   );
+}
+
+function ForecastNote({ state }: { state: ForecastState }) {
+  switch (state.status) {
+    case 'loading':
+      return <span className="forecast muted">東京の予報を取得中…</span>;
+    case 'ok':
+      return (
+        <span className="forecast muted">
+          東京の予報: 最高 {Math.round(state.data.max)}℃ / 最低 {Math.round(state.data.min)}℃
+        </span>
+      );
+    case 'error':
+      return <span className="forecast warn">予報を取得できませんでした。手入力できます</span>;
+    case 'unavailable':
+      return <span className="forecast muted">この日付の予報は取得できません</span>;
+    default:
+      return null;
+  }
 }
 
 function OutfitCard({ outfit, rank }: { outfit: Outfit; rank: number }) {

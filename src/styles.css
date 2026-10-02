@@ -113,6 +113,8 @@ body {
 .conditions input, .conditions select {
   padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 0.95rem;
 }
+.forecast { font-size: 0.8rem; }
+.forecast.warn { color: var(--warn); }
 .cond-summary { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .pill { background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; font-size: 0.85rem; }
 
