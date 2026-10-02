@@ -120,7 +120,14 @@ body {
 .outfit .rank { font-weight: 700; color: var(--accent); font-size: 1.1rem; }
 .outfit .palette { display: flex; gap: 4px; flex: 1; }
 .outfit .score { font-weight: 700; font-size: 1.1rem; }
-.outfit-items { display: flex; flex-direction: column; gap: 6px; }
+.outfit-main { display: flex; gap: 12px; align-items: flex-start; }
+.outfit-items { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
+.figure { flex: 0 0 auto; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+.figure-body { fill: var(--border); }
+.figure-part { stroke: rgba(0, 0, 0, 0.25); stroke-width: 0.8; stroke-linejoin: round; }
+@media (prefers-color-scheme: dark) {
+  .figure-part { stroke: rgba(255, 255, 255, 0.25); }
+}
 .reasons { list-style: none; padding: 0; margin: 10px 0 6px; font-size: 0.9rem; }
 .reasons li { padding: 2px 0; }
 .reasons .warn { color: var(--warn); }
