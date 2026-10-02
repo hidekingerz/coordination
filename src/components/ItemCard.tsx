@@ -19,7 +19,10 @@ export function ItemCard({ item, onEdit, onDelete, compact }: Props) {
       </div>
       <div className="item-body">
         <div className="item-title">
-          <span className="item-category">{CATEGORY_LABEL[item.category]}</span>
+          <span className="item-category">
+            {CATEGORY_LABEL[item.category]}
+            {item.brand ? <span className="item-brand"> · {item.brand}</span> : null}
+          </span>
           <strong>{item.name}</strong>
         </div>
         <div className="item-meta">

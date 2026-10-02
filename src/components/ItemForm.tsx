@@ -11,9 +11,12 @@ import {
 } from '../types';
 import { colorLabel, normalizeHex } from '../lib/color';
 import { newId } from '../lib/storage';
+import { knownBrands, normalizeBrand } from '../lib/brand';
 
 interface Props {
   initial?: ClothingItem;
+  /** 登録済みブランドの候補を出すために使う */
+  wardrobe?: ClothingItem[];
   onSubmit: (item: ClothingItem) => void;
   onCancel: () => void;
 }
@@ -33,8 +36,9 @@ const PRESET_COLORS: { label: string; hex: string }[] = [
   { label: 'ピンク', hex: '#e8a9b8' },
 ];
 
-export function ItemForm({ initial, onSubmit, onCancel }: Props) {
+export function ItemForm({ initial, wardrobe = [], onSubmit, onCancel }: Props) {
   const [name, setName] = useState(initial?.name ?? '');
+  const [brand, setBrand] = useState(initial?.brand ?? '');
   const [category, setCategory] = useState<Category>(initial?.category ?? 'tops');
   const [color, setColor] = useState(initial?.color ?? '#f5f5f0');
   const [hasSub, setHasSub] = useState(Boolean(initial?.subColor));
@@ -62,6 +66,7 @@ export function ItemForm({ initial, onSubmit, onCancel }: Props) {
     onSubmit({
       id: initial?.id ?? newId(),
       name: name.trim(),
+      brand: normalizeBrand(brand),
       category,
       color: hex,
       subColor: sub ?? undefined,
@@ -84,6 +89,18 @@ export function ItemForm({ initial, onSubmit, onCancel }: Props) {
       <label>
         名前
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="例: 白の無地Tシャツ" autoFocus />
+      </label>
+
+      <label>
+        <span>
+          ブランド <span className="muted">(任意)</span>
+        </span>
+        <input value={brand} onChange={(e) => setBrand(e.target.value)} list="brand-options" placeholder="例: ユニクロ" />
+        <datalist id="brand-options">
+          {knownBrands(wardrobe).map((b) => (
+            <option key={b} value={b} />
+          ))}
+        </datalist>
       </label>
 
       <label>

@@ -6,6 +6,8 @@ export type Warmth = 1 | 2 | 3 | 4 | 5;
 export interface ClothingItem {
   id: string;
   name: string;
+  /** ブランド名。任意 */
+  brand?: string;
   category: Category;
   /** 主色 (#rrggbb) */
   color: string;

@@ -21,7 +21,13 @@ export function WardrobeView({ wardrobe, onChange }: Props) {
     const q = query.trim().toLowerCase();
     return wardrobe
       .filter((i) => filter === 'all' || i.category === filter)
-      .filter((i) => !q || i.name.toLowerCase().includes(q) || i.tags.some((t) => t.toLowerCase().includes(q)))
+      .filter(
+        (i) =>
+          !q ||
+          i.name.toLowerCase().includes(q) ||
+          (i.brand?.toLowerCase().includes(q) ?? false) ||
+          i.tags.some((t) => t.toLowerCase().includes(q)),
+      )
       .sort((a, b) => ALL_CATEGORIES.indexOf(a.category) - ALL_CATEGORIES.indexOf(b.category));
   }, [wardrobe, filter, query]);
 
@@ -79,7 +85,7 @@ export function WardrobeView({ wardrobe, onChange }: Props) {
         </button>
         <input
           className="search"
-          placeholder="名前・タグで検索"
+          placeholder="名前・ブランド・タグで検索"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -120,6 +126,7 @@ export function WardrobeView({ wardrobe, onChange }: Props) {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <ItemForm
               initial={editing === 'new' ? undefined : editing}
+              wardrobe={wardrobe}
               onSubmit={upsert}
               onCancel={() => setEditing(null)}
             />
