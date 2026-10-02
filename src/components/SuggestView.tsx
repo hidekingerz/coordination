@@ -3,6 +3,8 @@ import type { ClothingItem, Formality } from '../types';
 import { ALL_FORMALITIES, CATEGORY_LABEL, FORMALITY_LABEL, SEASON_LABEL, WARMTH_LABEL } from '../types';
 import { buildConditions } from '../lib/season';
 import { suggestOutfits, type Outfit } from '../lib/outfit';
+import { buildFigure } from '../lib/figure';
+import { OutfitFigure } from './OutfitFigure';
 import { ItemCard } from './ItemCard';
 import { Swatch } from './Swatch';
 
@@ -136,10 +138,13 @@ function OutfitCard({ outfit, rank }: { outfit: Outfit; rank: number }) {
           {pct(outfit.score)}点
         </span>
       </header>
-      <div className="outfit-items">
-        {items.map((i) => (
-          <ItemCard key={i.id} item={i} compact />
-        ))}
+      <div className="outfit-main">
+        <OutfitFigure parts={buildFigure(outfit.items)} width={110} />
+        <div className="outfit-items">
+          {items.map((i) => (
+            <ItemCard key={i.id} item={i} compact />
+          ))}
+        </div>
       </div>
       <ul className="reasons">
         {outfit.reasons.map((r, i) => (
