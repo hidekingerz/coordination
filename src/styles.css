@@ -82,6 +82,7 @@ body {
 .item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .item-title { display: flex; flex-direction: column; }
 .item-category { font-size: 0.75rem; color: var(--muted); }
+.item-brand { color: var(--accent); }
 .item-title strong { font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; }
 .item-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 0.8rem; color: var(--muted); }
 .item-meta .tags { color: var(--accent); }

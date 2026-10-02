@@ -1,4 +1,5 @@
 import type { ClothingItem } from '../types';
+import { normalizeBrand } from './brand';
 
 const KEY = 'coordination.wardrobe.v1';
 
@@ -7,7 +8,7 @@ export function loadWardrobe(): ClothingItem[] {
     const raw = localStorage.getItem(KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter(isItem) : [];
+    return Array.isArray(parsed) ? parsed.filter(isItem).map(sanitize) : [];
   } catch {
     return [];
   }
@@ -29,9 +30,15 @@ export function parseImport(text: string): ClothingItem[] {
   const data = JSON.parse(text);
   const arr = Array.isArray(data) ? data : data?.items;
   if (!Array.isArray(arr)) throw new Error('items 配列が見つかりません');
-  const items = arr.filter(isItem);
+  const items = arr.filter(isItem).map(sanitize);
   if (items.length === 0) throw new Error('有効なアイテムがありません');
   return items;
+}
+
+/** 型が合わない任意項目を落として、安全な形に整える */
+function sanitize(item: ClothingItem): ClothingItem {
+  const brand = typeof item.brand === 'string' ? normalizeBrand(item.brand) : undefined;
+  return { ...item, brand };
 }
 
 function isItem(x: unknown): x is ClothingItem {
