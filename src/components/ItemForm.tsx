@@ -11,6 +11,7 @@ import {
 } from '../types';
 import { colorLabel, normalizeHex } from '../lib/color';
 import { newId } from '../lib/storage';
+import { ImageColorPicker } from './ImageColorPicker';
 import { knownBrands, normalizeBrand } from '../lib/brand';
 
 interface Props {
@@ -113,6 +114,24 @@ export function ItemForm({ initial, wardrobe = [], onSubmit, onCancel }: Props) 
           ))}
         </select>
       </label>
+
+      <ImageColorPicker
+        imageUrl={imageUrl}
+        onPick={(hex, target) => {
+          if (target === 'main') setColor(hex);
+          else {
+            setSubColor(hex);
+            setHasSub(true);
+          }
+        }}
+        onExtracted={(main, sub) => {
+          setColor(main);
+          if (sub) {
+            setSubColor(sub);
+            setHasSub(true);
+          }
+        }}
+      />
 
       <fieldset>
         <legend>
