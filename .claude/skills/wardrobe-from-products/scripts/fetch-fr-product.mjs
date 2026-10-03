@@ -42,6 +42,7 @@ const COLOR_HEX = {
   BEIGE: '#d9c4a5',
   'LIGHT BEIGE': '#e8dcc5',
   'DARK BEIGE': '#bda27e',
+  CAMEL: '#c6a070',
   BROWN: '#5a3a22',
   'LIGHT BROWN': '#a07850',
   'DARK BROWN': '#3e2616',

@@ -16,6 +16,14 @@
 - 機能名と warmth: エアリズム=1, ドライEX=1, ヒートテック=4, 極暖=5, 超極暖=5, ウルトラライトダウン=4 (薄手だが保温), シームレスダウン=5, ハイブリッドダウン=5, フリース (ファーリー)=4, スウェット=3, 感動パンツ=2〜3 (smart), スマートアンクルパンツ=3 (smart), ワイドフィットチノ=3, セルビッジデニム=3。
   GU: ヘビーウェイト=+1, ドライ=1, シェフパンツ=3 (casual), タックワイドパンツ=3 (smart), ダブルフェイス=4。
 
+## 普通の HTML が取れる (fetch-page.mjs でそのまま読める)
+
+- GALLIPOLI (gallipoli.jp): `product-detail/?pcode=550675` 形式。タイトルが商品名、本文に「素材 ［表地］麻100％」、`<select>` に色展開、
+  色別画像は `shop.gallipoli.jp/pic-labo/llimg/<pcode>s<色コード>.jpg` で画像下部に「101:ホワイト」のラベル付き。
+  シャツ専業ブランドなので category は tops、カッタウェイカラーなど襟の表現があれば formality は smart。
+- 一般に、自社ドメインで運営する小〜中規模ブランドの EC (カラーミー / futureshop / EC-CUBE / Shopify 系) は取れることが多い。
+  Shopify 系は商品 URL に `.json` を付ける (`/products/<handle>.json`) と構造化データが取れる。
+
 ## 取得できないことが多い (ボット対策 / JS 描画)
 
 この環境からの `curl` / `WebFetch` では、ZOZOTOWN (403)、UNITED ARROWS (403)、GLOBAL WORK などアダストリア系 (403)、H&M (403)、

@@ -55,6 +55,29 @@
           "text": "Gist に貼ってアプリでインポートする手順が簡潔に案内されている"
         }
       ]
+    },
+    {
+      "id": 2,
+      "prompt": "https://www.gallipoli.jp/product-detail/?pcode=550675\n\nここのも試してみて。",
+      "expected_output": "商品ページを取得して GALLIPOLI のウォッシュドリネンシャツ (麻100%, 長袖, tops, warmth 1, 春夏秋, smart) の JSON を作り、色展開を提示してどの色を持っているかだけ確認する",
+      "files": [],
+      "assertions": [
+        {
+          "text": "fetch-page.mjs などで商品ページを取得し、ユーザーに貼り付けを求めていない"
+        },
+        {
+          "text": "brand が GALLIPOLI、category が tops、warmth が 1、seasons が spring/summer/autumn、formality が smart"
+        },
+        {
+          "text": "色展開 (ホワイト・ネイビー・ブラック・ボルドー…) を提示し、どの色を持っているかを 1 回だけ確認している"
+        },
+        {
+          "text": "id が gallipoli-550675-<色コード> の形で、imageUrl に色別画像 (550675s101.jpg など) が入っている"
+        },
+        {
+          "text": "validate.ts を通して警告なし"
+        }
+      ]
     }
   ]
 }

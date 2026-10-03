@@ -10,6 +10,11 @@ import { parseImportDetailed } from '../../../../src/lib/storage';
 import { CATEGORY_LABEL, FORMALITY_LABEL, SEASON_LABEL } from '../../../../src/types';
 import { colorLabel } from '../../../../src/lib/color';
 
+// head などにパイプしたときの EPIPE で落ちないようにする
+process.stdout.on('error', (e: NodeJS.ErrnoException) => {
+  if (e.code === 'EPIPE') process.exit(0);
+});
+
 const [file, ...rest] = process.argv.slice(2);
 if (!file) {
   console.error('使い方: npx tsx validate.ts <file.json> [--json]');
