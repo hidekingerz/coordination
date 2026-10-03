@@ -3,7 +3,8 @@ import type { ClothingItem, Formality } from '../types';
 import { ALL_FORMALITIES, CATEGORY_LABEL, FORMALITY_LABEL, SEASON_LABEL, WARMTH_LABEL } from '../types';
 import { buildConditions } from '../lib/season';
 import { getTokyoForecast, isForecastAvailable, toDateKey, type DailyTemperature } from '../lib/weather';
-import { suggestOutfits, type Outfit } from '../lib/outfit';
+import { FRESHNESS_PRESETS, suggestOutfits, type FreshnessMode, type Outfit } from '../lib/outfit';
+import { buildWearStats, daysBetween, statsFor, type WearLog } from '../lib/wear';
 import { buildFigure } from '../lib/figure';
 import { OutfitFigure } from './OutfitFigure';
 import { ItemCard } from './ItemCard';
@@ -11,7 +12,16 @@ import { Swatch } from './Swatch';
 
 interface Props {
   wardrobe: ClothingItem[];
+  wearLog: WearLog;
+  onWear: (itemIds: string[], date: string, outfitId?: string) => void;
+  onUnwear: (itemIds: string[], date: string) => void;
 }
+
+const FRESHNESS_LABEL: Record<FreshnessMode, string> = {
+  balanced: '最近着た服は控えめに (標準)',
+  prefer: '着ていない服を優先',
+  off: '考慮しない',
+};
 
 type ForecastState =
   | { status: 'idle' }
@@ -26,7 +36,7 @@ function parseDate(dateStr: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-export function SuggestView({ wardrobe }: Props) {
+export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
   const [dateStr, setDateStr] = useState(() => toDateKey(new Date()));
   const [tempStr, setTempStr] = useState('');
   const [forecast, setForecast] = useState<ForecastState>({ status: 'idle' });
@@ -66,7 +76,16 @@ export function SuggestView({ wardrobe }: Props) {
   }, [dateStr]);
   const [formality, setFormality] = useState<Formality | ''>('');
   const [mustInclude, setMustInclude] = useState<string>('');
+  const [freshness, setFreshness] = useState<FreshnessMode>('balanced');
   const [results, setResults] = useState<Outfit[] | null>(null);
+  const [worn, setWorn] = useState<{ outfit: Outfit; date: string } | null>(null);
+
+  const wearStats = useMemo(() => buildWearStats(wearLog, dateStr), [wearLog, dateStr]);
+  const recentOutfitIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of wearLog) if (e.outfitId && e.date <= dateStr && daysBetween(e.date, dateStr) < 7) set.add(e.outfitId);
+    return set;
+  }, [wearLog, dateStr]);
 
   const conditions = useMemo(() => {
     const temp = tempStr.trim() === '' ? undefined : Number(tempStr);
@@ -80,8 +99,29 @@ export function SuggestView({ wardrobe }: Props) {
         formality: formality || undefined,
         mustInclude: mustInclude ? [mustInclude] : undefined,
         limit: 5,
+        wearStats: wearLog.length ? wearStats : undefined,
+        freshnessWeight: FRESHNESS_PRESETS[freshness],
+        recentOutfitIds,
       }),
     );
+    setWorn(null);
+  };
+
+  const wearOutfit = (outfit: Outfit) => {
+    onWear(
+      outfit.items.map((i) => i.id),
+      dateStr,
+      outfit.id,
+    );
+    setWorn({ outfit, date: dateStr });
+  };
+  const undoWear = () => {
+    if (!worn) return;
+    onUnwear(
+      worn.outfit.items.map((i) => i.id),
+      worn.date,
+    );
+    setWorn(null);
   };
 
   const pickable = wardrobe.filter((i) => i.category !== 'accessory');
@@ -122,6 +162,17 @@ export function SuggestView({ wardrobe }: Props) {
             </select>
           </label>
           <label>
+            <span>着用履歴</span>
+            <select value={freshness} onChange={(e) => setFreshness(e.target.value as FreshnessMode)} disabled={wearLog.length === 0}>
+              {(Object.keys(FRESHNESS_LABEL) as FreshnessMode[]).map((k) => (
+                <option key={k} value={k}>
+                  {FRESHNESS_LABEL[k]}
+                </option>
+              ))}
+            </select>
+            {wearLog.length === 0 && <span className="forecast muted">「このコーデを着た」で記録すると使えます</span>}
+          </label>
+          <label>
             <span>
               このアイテムを着たい <span className="muted">任意</span>
             </span>
@@ -156,10 +207,29 @@ export function SuggestView({ wardrobe }: Props) {
         </p>
       )}
 
+      {worn && (
+        <div className="toast">
+          #{(results?.findIndex((o) => o.id === worn.outfit.id) ?? 0) + 1} のコーデを {worn.date} に着たとして記録しました。
+          <button type="button" className="link" onClick={undoWear}>
+            取り消す
+          </button>
+          <button type="button" className="link" onClick={() => setWorn(null)}>
+            閉じる
+          </button>
+        </div>
+      )}
+
       {results && results.length > 0 && (
         <div className="outfits">
           {results.map((o, idx) => (
-            <OutfitCard key={o.id} outfit={o} rank={idx + 1} />
+            <OutfitCard
+              key={o.id}
+              outfit={o}
+              rank={idx + 1}
+              wearStats={wearLog.length ? wearStats : undefined}
+              worn={worn?.outfit.id === o.id}
+              onWear={() => wearOutfit(o)}
+            />
           ))}
         </div>
       )}
@@ -186,7 +256,15 @@ function ForecastNote({ state }: { state: ForecastState }) {
   }
 }
 
-function OutfitCard({ outfit, rank }: { outfit: Outfit; rank: number }) {
+interface OutfitCardProps {
+  outfit: Outfit;
+  rank: number;
+  wearStats?: ReturnType<typeof buildWearStats>;
+  worn: boolean;
+  onWear: () => void;
+}
+
+function OutfitCard({ outfit, rank, wearStats, worn, onWear }: OutfitCardProps) {
   const pct = (n: number) => Math.round(n * 100);
   const order = ['outer', 'tops', 'onepiece', 'bottoms', 'shoes', 'accessory'];
   const items = [...outfit.items].sort((a, b) => order.indexOf(a.category) - order.indexOf(b.category));
@@ -207,7 +285,7 @@ function OutfitCard({ outfit, rank }: { outfit: Outfit; rank: number }) {
         <OutfitFigure parts={buildFigure(outfit.items)} width={110} />
         <div className="outfit-items">
           {items.map((i) => (
-            <ItemCard key={i.id} item={i} compact />
+            <ItemCard key={i.id} item={i} compact wear={wearStats ? statsFor(wearStats, i.id) : undefined} />
           ))}
         </div>
       </div>
@@ -226,6 +304,12 @@ function OutfitCard({ outfit, rank }: { outfit: Outfit; rank: number }) {
         <Bar label="厚さ" value={outfit.breakdown.warmth} />
         <Bar label="テイスト" value={outfit.breakdown.formality} />
         <Bar label="季節" value={outfit.breakdown.season} />
+        {wearStats && <Bar label="鮮度" value={outfit.breakdown.freshness} />}
+      </div>
+      <div className="outfit-actions">
+        <button type="button" className={`btn small ${worn ? '' : 'primary'}`} onClick={onWear} disabled={worn}>
+          {worn ? '記録済み' : 'このコーデを着た'}
+        </button>
       </div>
     </article>
   );

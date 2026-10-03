@@ -1,16 +1,28 @@
 import type { ClothingItem } from '../types';
 import { CATEGORY_LABEL, FORMALITY_LABEL, SEASON_LABEL } from '../types';
 import { colorLabel } from '../lib/color';
+import { describeLastWorn, type WearStats } from '../lib/wear';
 import { Swatch } from './Swatch';
 
 interface Props {
   item: ClothingItem;
   onEdit?: (item: ClothingItem) => void;
   onDelete?: (item: ClothingItem) => void;
+  /** 着用状況。渡すと「3日前 / 未着用」と着用回数を表示する */
+  wear?: WearStats;
+  /** 「今日着た」ボタン */
+  onWearToday?: (item: ClothingItem) => void;
   compact?: boolean;
 }
 
-export function ItemCard({ item, onEdit, onDelete, compact }: Props) {
+function wearClass(wear: WearStats): string {
+  if (wear.daysSince === null) return 'never';
+  if (wear.daysSince <= 2) return 'recent';
+  if (wear.daysSince >= 60) return 'stale';
+  return '';
+}
+
+export function ItemCard({ item, onEdit, onDelete, wear, onWearToday, compact }: Props) {
   return (
     <div className={`item-card ${compact ? 'compact' : ''}`}>
       <div className="item-visual" style={{ background: item.color }}>
@@ -43,9 +55,20 @@ export function ItemCard({ item, onEdit, onDelete, compact }: Props) {
               {item.tags.length ? <span className="tags">{item.tags.map((t) => `#${t}`).join(' ')}</span> : null}
             </>
           )}
+          {wear && (
+            <span className={`wear ${wearClass(wear)}`} title={wear.lastWorn ? `最後に着た日: ${wear.lastWorn}` : '着用記録なし'}>
+              {describeLastWorn(wear)}
+              {wear.count > 0 && !compact ? ` · ${wear.count}回` : ''}
+            </span>
+          )}
         </div>
-        {(onEdit || onDelete) && (
+        {(onEdit || onDelete || onWearToday) && (
           <div className="item-actions">
+            {onWearToday && (
+              <button type="button" className="btn small" onClick={() => onWearToday(item)} title="今日この服を着たことを記録">
+                今日着た
+              </button>
+            )}
             {onEdit && (
               <button type="button" className="btn small" onClick={() => onEdit(item)}>
                 編集

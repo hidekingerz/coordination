@@ -5,18 +5,29 @@ import { ItemCard } from './ItemCard';
 import { ItemForm } from './ItemForm';
 import { ImportDialog } from './ImportDialog';
 import { exportJson, mergeWardrobe, type MergeMode } from '../lib/storage';
+import { buildWearStats, statsFor, toDateKey, type WearLog } from '../lib/wear';
 import { SAMPLE_WARDROBE } from '../data/sample';
 
 interface Props {
   wardrobe: ClothingItem[];
+  wearLog: WearLog;
   onChange: (next: ClothingItem[]) => void;
+  onWear: (itemIds: string[], date: string) => void;
+  onUnwear: (itemIds: string[], date: string) => void;
+  onImportWearLog: (log: WearLog) => void;
 }
 
-export function WardrobeView({ wardrobe, onChange }: Props) {
+type SortMode = 'category' | 'unworn' | 'recent';
+
+export function WardrobeView({ wardrobe, wearLog, onChange, onWear, onUnwear, onImportWearLog }: Props) {
   const [editing, setEditing] = useState<ClothingItem | null | 'new'>(null);
   const [filter, setFilter] = useState<Category | 'all'>('all');
   const [query, setQuery] = useState('');
   const [importing, setImporting] = useState(false);
+  const [sort, setSort] = useState<SortMode>('category');
+  const [lastWear, setLastWear] = useState<{ item: ClothingItem; date: string } | null>(null);
+  const today = toDateKey(new Date());
+  const stats = useMemo(() => buildWearStats(wearLog, today), [wearLog, today]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -29,8 +40,39 @@ export function WardrobeView({ wardrobe, onChange }: Props) {
           (i.brand?.toLowerCase().includes(q) ?? false) ||
           i.tags.some((t) => t.toLowerCase().includes(q)),
       )
-      .sort((a, b) => ALL_CATEGORIES.indexOf(a.category) - ALL_CATEGORIES.indexOf(b.category));
-  }, [wardrobe, filter, query]);
+      .sort((a, b) => {
+        if (sort === 'unworn') {
+          // 未着用を先頭に、あとは最後に着た日が古い順
+          const da = statsFor(stats, a.id).daysSince ?? Infinity;
+          const db = statsFor(stats, b.id).daysSince ?? Infinity;
+          if (da !== db) return db - da;
+        } else if (sort === 'recent') {
+          const da = statsFor(stats, a.id).daysSince ?? Infinity;
+          const db = statsFor(stats, b.id).daysSince ?? Infinity;
+          if (da !== db) return da - db;
+        }
+        return ALL_CATEGORIES.indexOf(a.category) - ALL_CATEGORIES.indexOf(b.category);
+      });
+  }, [wardrobe, filter, query, sort, stats]);
+
+  // 履歴が半数以上にたまるまでは「未着用」を数えない (最初はほぼ全部が未着用で案内にならない)
+  const unwornCount = useMemo(() => {
+    const established = wardrobe.length > 0 && wardrobe.filter((i) => stats.has(i.id)).length / wardrobe.length >= 0.5;
+    return wardrobe.filter((i) => {
+      const d = statsFor(stats, i.id).daysSince;
+      return d === null ? established : d >= 60;
+    }).length;
+  }, [wardrobe, stats]);
+
+  const wearToday = (item: ClothingItem) => {
+    onWear([item.id], today);
+    setLastWear({ item, date: today });
+  };
+  const undoWear = () => {
+    if (!lastWear) return;
+    onUnwear([lastWear.item.id], lastWear.date);
+    setLastWear(null);
+  };
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
@@ -49,7 +91,7 @@ export function WardrobeView({ wardrobe, onChange }: Props) {
   };
 
   const download = () => {
-    const blob = new Blob([exportJson(wardrobe)], { type: 'application/json' });
+    const blob = new Blob([exportJson(wardrobe, wearLog)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -58,8 +100,9 @@ export function WardrobeView({ wardrobe, onChange }: Props) {
     URL.revokeObjectURL(url);
   };
 
-  const applyImport = (items: ClothingItem[], mode: MergeMode) => {
+  const applyImport = (items: ClothingItem[], mode: MergeMode, importedLog?: WearLog) => {
     onChange(mergeWardrobe(wardrobe, items, mode));
+    if (importedLog?.length) onImportWearLog(importedLog);
     setImporting(false);
   };
 
@@ -85,6 +128,11 @@ export function WardrobeView({ wardrobe, onChange }: Props) {
       </div>
 
       <div className="chips filter">
+        <select className="sort" value={sort} onChange={(e) => setSort(e.target.value as SortMode)} title="並び順">
+          <option value="category">カテゴリ順</option>
+          <option value="unworn">着ていない順</option>
+          <option value="recent">最近着た順</option>
+        </select>
         <button type="button" className={`chip ${filter === 'all' ? 'on' : ''}`} onClick={() => setFilter('all')}>
           すべて ({wardrobe.length})
         </button>
@@ -113,6 +161,27 @@ export function WardrobeView({ wardrobe, onChange }: Props) {
         </div>
       )}
 
+      {wardrobe.length > 0 && unwornCount > 0 && sort !== 'unworn' && (
+        <p className="hint">
+          2 か月以上着ていない (または未着用の) 服が {unwornCount} 点あります。{' '}
+          <button type="button" className="link" onClick={() => setSort('unworn')}>
+            着ていない順に並べる
+          </button>
+        </p>
+      )}
+
+      {lastWear && (
+        <div className="toast">
+          「{lastWear.item.name}」を今日着たとして記録しました。
+          <button type="button" className="link" onClick={undoWear}>
+            取り消す
+          </button>
+          <button type="button" className="link" onClick={() => setLastWear(null)}>
+            閉じる
+          </button>
+        </div>
+      )}
+
       {importing && (
         <div className="modal-backdrop" onClick={() => setImporting(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -136,7 +205,14 @@ export function WardrobeView({ wardrobe, onChange }: Props) {
       ) : (
         <div className="grid">
           {visible.map((item) => (
-            <ItemCard key={item.id} item={item} onEdit={setEditing} onDelete={remove} />
+            <ItemCard
+              key={item.id}
+              item={item}
+              onEdit={setEditing}
+              onDelete={remove}
+              wear={statsFor(stats, item.id)}
+              onWearToday={wearToday}
+            />
           ))}
         </div>
       )}

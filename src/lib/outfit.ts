@@ -2,6 +2,7 @@ import type { ClothingItem, Formality, Warmth } from '../types';
 import { FORMALITY_LABEL, SEASON_LABEL } from '../types';
 import { COLOR_FAMILY_LABEL, evaluatePalette } from './color';
 import type { Conditions } from './season';
+import { describeLastWorn, freshnessScore, statsFor, type WearStatsMap } from './wear';
 
 export interface Outfit {
   id: string;
@@ -13,6 +14,8 @@ export interface Outfit {
     warmth: number;
     formality: number;
     season: number;
+    /** 着用履歴から見た新鮮さ。履歴を使わないときは 1 */
+    freshness: number;
   };
   scheme: string;
   reasons: string[];
@@ -27,6 +30,46 @@ export interface SuggestOptions {
   limit?: number;
   /** 必ず含めたいアイテム (例: 今日はこのトップスを着たい) */
   mustInclude?: string[];
+  /** 着用状況 (buildWearStats の結果)。渡すと最近着た服を下げ、着ていない服を上げる */
+  wearStats?: WearStatsMap;
+  /** 鮮度の重み 0〜1。既定は履歴ありなら 0.1、なしなら 0 */
+  freshnessWeight?: number;
+  /** 直近に同じ組み合わせを着ていたら下げるための組み合わせ ID の集合 */
+  recentOutfitIds?: Set<string>;
+  /**
+   * 「未着用」を提案理由として挙げるか。履歴が少ないうちはほぼ全部が未着用で理由にならないので、
+   * suggestOutfits がクローゼットの半数以上に記録があるときだけ true にする
+   */
+  mentionNeverWorn?: boolean;
+}
+
+/** 履歴が「たまった」とみなす、記録のあるアイテムの割合 */
+export const HISTORY_ESTABLISHED_RATIO = 0.5;
+
+/** 鮮度の重みのプリセット */
+export const FRESHNESS_PRESETS = {
+  off: 0,
+  balanced: 0.1,
+  prefer: 0.3,
+} as const;
+export type FreshnessMode = keyof typeof FRESHNESS_PRESETS;
+
+function resolveFreshnessWeight(opts: SuggestOptions): number {
+  if (opts.freshnessWeight !== undefined) return Math.max(0, Math.min(1, opts.freshnessWeight));
+  return opts.wearStats ? FRESHNESS_PRESETS.balanced : 0;
+}
+
+/** コーデ全体の鮮度。小物は印象に残りにくいので軽く見る */
+function freshnessOf(items: ClothingItem[], stats: WearStatsMap | undefined): number {
+  if (!stats) return 1;
+  let sum = 0;
+  let wsum = 0;
+  for (const i of items) {
+    const w = i.category === 'accessory' || i.category === 'shoes' ? 0.5 : 1;
+    sum += freshnessScore(statsFor(stats, i.id).daysSince) * w;
+    wsum += w;
+  }
+  return wsum ? sum / wsum : 1;
 }
 
 const FORMALITY_RANK: Record<Formality, number> = { casual: 0, smart: 1, formal: 2 };
@@ -91,7 +134,16 @@ export function scoreOutfit(items: ClothingItem[], opts: SuggestOptions): Outfit
   const season = (fits.reduce((a, b) => a + b, 0) / fits.length) * 0.5 + Math.min(...fits) * 0.5;
   const offSeason = items.filter((_, idx) => fits[idx] === 0);
 
-  const score = palette.score * 0.45 + warmth.score * 0.3 + formality * 0.15 + season * 0.1;
+  const outfitId = items
+    .map((i) => i.id)
+    .sort()
+    .join('+');
+  const fw = resolveFreshnessWeight(opts);
+  let freshness = freshnessOf(items, opts.wearStats);
+  const repeated = opts.recentOutfitIds?.has(outfitId) ?? false;
+  if (repeated) freshness *= 0.5;
+  const base = palette.score * 0.45 + warmth.score * 0.3 + formality * 0.15 + season * 0.1;
+  const score = base * (1 - fw) + freshness * fw;
 
   const reasons: string[] = [];
   const warnings: string[] = [];
@@ -107,28 +159,46 @@ export function scoreOutfit(items: ClothingItem[], opts: SuggestOptions): Outfit
   if (formality >= 0.9) reasons.push(`${FORMALITY_LABEL[dominantFormality(items)]}でテイストが統一`);
   else if (formality < 0.4) warnings.push('テイストがばらついています');
   if (offSeason.length) warnings.push(`季節外れ: ${offSeason.map((i) => i.name).join('、')}`);
+  if (opts.wearStats && fw > 0) {
+    const main = items.filter((i) => i.category !== 'accessory' && i.category !== 'shoes');
+    const longUnworn = main.filter((i) => {
+      const d = statsFor(opts.wearStats, i.id).daysSince;
+      return d === null ? opts.mentionNeverWorn === true : freshnessScore(d) >= 1;
+    });
+    const recent = main.filter((i) => (statsFor(opts.wearStats, i.id).daysSince ?? 99) <= 2);
+    if (longUnworn.length) {
+      reasons.push(
+        `しばらく着ていない: ${longUnworn
+          .slice(0, 2)
+          .map((i) => `${i.name} (${describeLastWorn(statsFor(opts.wearStats, i.id))})`)
+          .join('、')}`,
+      );
+    }
+    if (recent.length) {
+      warnings.push(`最近着た: ${recent.map((i) => `${i.name} (${describeLastWorn(statsFor(opts.wearStats, i.id))})`).join('、')}`);
+    }
+    if (repeated) warnings.push('この組み合わせは最近着ています');
+  }
 
   return {
-    id: items
-      .map((i) => i.id)
-      .sort()
-      .join('+'),
+    id: outfitId,
     items,
     score,
-    breakdown: { color: palette.score, warmth: warmth.score, formality, season },
+    breakdown: { color: palette.score, warmth: warmth.score, formality, season, freshness },
     scheme: palette.scheme,
     reasons,
     warnings,
   };
 }
 
-/** 候補を季節・厚さの適合度で絞って組み合わせ爆発を防ぐ */
-function pickCandidates(items: ClothingItem[], c: Conditions, limit: number): ClothingItem[] {
+/** 候補を季節・厚さ (と鮮度) の適合度で絞って組み合わせ爆発を防ぐ */
+function pickCandidates(items: ClothingItem[], c: Conditions, limit: number, stats?: WearStatsMap, fw = 0): ClothingItem[] {
   const scored = items
-    .map((i) => ({
-      i,
-      s: seasonFit(i, c) * 0.6 + (1 - Math.abs(i.warmth - c.targetWarmth) / 4) * 0.4,
-    }))
+    .map((i) => {
+      const fit = seasonFit(i, c) * 0.6 + (1 - Math.abs(i.warmth - c.targetWarmth) / 4) * 0.4;
+      const fresh = stats ? freshnessScore(statsFor(stats, i.id).daysSince) : 1;
+      return { i, s: fit * (1 - fw) + fresh * fw };
+    })
     .filter((x) => x.s > 0.15)
     .sort((a, b) => b.s - a.s);
   const picked = scored.slice(0, limit).map((x) => x.i);
@@ -141,12 +211,17 @@ export function suggestOutfits(wardrobe: ClothingItem[], opts: SuggestOptions): 
   const limit = opts.limit ?? 5;
   const must = new Set(opts.mustInclude ?? []);
   const PER_CAT = 8;
+  const fw = resolveFreshnessWeight(opts);
+  if (opts.wearStats && opts.mentionNeverWorn === undefined) {
+    const withHistory = wardrobe.filter((i) => opts.wearStats!.has(i.id)).length;
+    opts = { ...opts, mentionNeverWorn: wardrobe.length > 0 && withHistory / wardrobe.length >= HISTORY_ESTABLISHED_RATIO };
+  }
 
   const byCat = (cat: ClothingItem['category']) => {
     const all = wardrobe.filter((i) => i.category === cat);
     const forced = all.filter((i) => must.has(i.id));
     if (forced.length) return forced;
-    return pickCandidates(all, conditions, PER_CAT);
+    return pickCandidates(all, conditions, PER_CAT, opts.wearStats, fw);
   };
 
   const outers = byCat('outer');

@@ -3,11 +3,12 @@ import type { ClothingItem } from '../types';
 import { CATEGORY_LABEL } from '../types';
 import { fetchWardrobeFromSource, loadLastSource, saveLastSource } from '../lib/gist';
 import { parseImportDetailed, type ImportResult, type MergeMode } from '../lib/storage';
+import type { WearLog } from '../lib/wear';
 import { Swatch } from './Swatch';
 
 interface Props {
   existingCount: number;
-  onApply: (items: ClothingItem[], mode: MergeMode) => void;
+  onApply: (items: ClothingItem[], mode: MergeMode, wearLog?: WearLog) => void;
   onClose: () => void;
 }
 
@@ -66,7 +67,7 @@ export function ImportDialog({ existingCount, onApply, onClose }: Props) {
   const apply = () => {
     if (!preview) return;
     if (preview.label.startsWith('Gist') || preview.label.startsWith('http')) saveLastSource(source.trim());
-    onApply(preview.items, existingCount ? mode : 'replace');
+    onApply(preview.items, existingCount ? mode : 'replace', preview.wearLog);
   };
 
   const warningsToShow = preview ? (showAllWarnings ? preview.warnings : preview.warnings.slice(0, 5)) : [];
@@ -126,6 +127,7 @@ export function ImportDialog({ existingCount, onApply, onClose }: Props) {
           <h4>
             {preview.items.length} 件を読み込みました <span className="muted">({preview.label})</span>
           </h4>
+          {preview.wearLog?.length ? <p className="muted">着用履歴 {preview.wearLog.length} 件も取り込みます。</p> : null}
           <ul className="preview-list">
             {preview.items.slice(0, 8).map((i) => (
               <li key={i.id}>
