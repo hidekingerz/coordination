@@ -9,6 +9,7 @@
 - **コーデ提案**: 日付（省略時は今日）と任意の気温・テイスト・「このアイテムを着たい」指定から、上位 5 コーデを提案
 - **提案の根拠を表示**: 配色の種類（モノトーン / ベーシック＋差し色 / 類似色 など）、厚さの適合、テイストの統一、季節外れの警告
 - **JSON のエクスポート / インポート**: バックアップや別ブラウザへの移行に
+- **Gist からの取り込み**: GitHub Gist に貼った JSON を URL（または ID）から直接読み込み。手書きしやすいよう日本語ラベルや色名も受け付けます
 - **サンプルデータ**: 空の状態からすぐに試せる 30 点のサンプルクローゼット
 
 ## 使い方
@@ -25,6 +26,43 @@ npm run preview    # ビルド結果をローカルで確認
 ```
 
 静的サイトとしてビルドされるので、Vercel / Netlify / GitHub Pages などにそのまま配置できます。
+
+## Gist / JSON からクローゼットを取り込む
+
+クローゼット画面の「インポート」から、次のいずれかで取り込めます。
+
+- GitHub Gist のページ URL（`https://gist.github.com/you/<id>`）、Gist の ID、または「Raw」ボタンの URL
+- GitHub リポジトリ上のファイルの URL（`.../blob/...` は自動で raw に変換）
+- JSON を直接貼り付け、またはファイルを選択
+
+Secret gist も URL があれば読み込めます。Gist 内に複数ファイルがあるときは `.json` を優先し、読めるものを自動で選びます。
+取り込み前に件数と内容のプレビューが出て、「既存に追加（同じ ID は上書き）」か「置き換え」を選べます。最後に使った URL は記憶されるので、Gist を編集したあとは「読み込む」を押すだけで更新できます。
+
+### データ形式
+
+アプリのエクスポートと同じ `{ "items": [...] }` のほか、配列をそのまま置いても構いません。手書きする場合は最低限 `name` と `category` があれば取り込めます。
+
+```json
+[
+  { "name": "白のTシャツ", "category": "トップス", "color": "白", "seasons": "春,夏", "warmth": 1, "formality": "カジュアル", "tags": "Tシャツ" },
+  { "name": "ネイビーのステンカラーコート", "brand": "無印良品", "category": "outer", "color": "#1f2a44", "seasons": ["autumn", "winter"], "warmth": 4, "formality": "smart" },
+  { "name": "白のレザースニーカー", "category": "靴", "color": "white", "seasons": "通年" }
+]
+```
+
+| 項目 | 必須 | 受け付ける値 |
+| --- | --- | --- |
+| `name` | ○ | 名前 |
+| `category` | ○ | `outer` / `tops` / `bottoms` / `onepiece` / `shoes` / `accessory`、または「アウター」「トップス」「パンツ」「靴」「小物」などの日本語 |
+| `color` | | `#rrggbb`、または「白」「ネイビー」「ベージュ」「カーキ」「ボルドー」「navy」などの色名。無ければグレー |
+| `subColor` | | 副色。`color` と同じ形式 |
+| `seasons` | | 配列または「春,夏」のような文字列。「通年」「秋冬」も可。無ければ通年 |
+| `warmth` | | 1（真夏）〜 5（真冬）。無ければ 3 |
+| `formality` | | `casual` / `smart` / `formal`、または「カジュアル」「きれいめ」「フォーマル」。無ければカジュアル |
+| `brand`, `tags`, `imageUrl` | | 任意。`tags` は配列かカンマ区切り |
+| `id` | | 省略すると名前・カテゴリ・ブランドから安定した ID を作るので、同じ Gist を再取り込みしても重複しません |
+
+補完した項目はプレビューに警告として表示されます。
 
 ## 提案ロジックの概要
 
@@ -49,7 +87,8 @@ src/
   lib/color.ts            色の解析・分類・相性スコア
   lib/season.ts           日付 → 季節、気温 → 目標の厚さ
   lib/outfit.ts           コーデ生成とスコアリング
-  lib/storage.ts          localStorage と JSON 入出力
+  lib/storage.ts          localStorage と JSON 入出力 (手書き JSON の補完も)
+  lib/gist.ts             Gist / URL からの取得
   data/sample.ts          サンプルクローゼット
   components/             画面コンポーネント
 ```
