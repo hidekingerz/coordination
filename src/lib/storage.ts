@@ -2,6 +2,7 @@ import type { Category, ClothingItem, Formality, Season, Warmth } from '../types
 import { ALL_SEASONS } from '../types';
 import { normalizeBrand } from './brand';
 import { normalizeHex } from './color';
+import { isEntry, type WearLog } from './wear';
 
 const KEY = 'coordination.wardrobe.v1';
 
@@ -24,14 +25,20 @@ export function saveWardrobe(items: ClothingItem[]): void {
   }
 }
 
-export function exportJson(items: ClothingItem[]): string {
-  return JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), items }, null, 2);
+export function exportJson(items: ClothingItem[], wearLog: WearLog = []): string {
+  return JSON.stringify(
+    { version: 2, exportedAt: new Date().toISOString(), items, ...(wearLog.length ? { wearLog } : {}) },
+    null,
+    2,
+  );
 }
 
 export interface ImportResult {
   items: ClothingItem[];
   /** 補完・読み替えした内容の説明 (ユーザーに見せる) */
   warnings: string[];
+  /** エクスポートに含まれていた着用履歴 (あれば) */
+  wearLog?: WearLog;
 }
 
 export function parseImport(text: string): ClothingItem[] {
@@ -65,7 +72,9 @@ export function parseImportDetailed(text: string): ImportResult {
     warnings.push(...r.warnings);
   });
   if (items.length === 0) throw new Error('有効なアイテムがありません');
-  return { items, warnings };
+  const rawLog = Array.isArray(data) ? undefined : (data as { wearLog?: unknown })?.wearLog;
+  const wearLog = Array.isArray(rawLog) ? rawLog.filter(isEntry) : undefined;
+  return { items, warnings, ...(wearLog?.length ? { wearLog } : {}) };
 }
 
 /** BOM やコードフェンス (```json ... ```) を取り除く */

@@ -166,3 +166,15 @@ body {
 .warnings ul { margin: 0; padding-left: 18px; }
 .link { background: none; border: none; color: var(--accent); cursor: pointer; padding: 0; font-size: 0.85rem; }
 .import-preview .chips label { cursor: pointer; }
+
+/* 着用履歴 */
+.wear { border-radius: 999px; padding: 0 8px; border: 1px solid var(--border); font-size: 0.75rem; }
+.wear.never { color: var(--accent); border-color: var(--accent); }
+.wear.recent { color: var(--muted); }
+.wear.stale { color: var(--warn); border-color: var(--warn); }
+.hint { margin: -6px 0 12px; color: var(--muted); font-size: 0.9rem; }
+.toast { background: var(--card); border: 1px solid var(--accent); border-radius: 8px; padding: 8px 12px; margin: 0 0 12px; font-size: 0.9rem; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.outfit-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
+.chips.filter .sort { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 0.9rem; }
+.item-actions { flex-wrap: wrap; }
+.item-actions .btn.small { padding: 4px 8px; white-space: nowrap; }
