@@ -112,7 +112,7 @@ export const COLOR_NAME_ALIASES: Record<string, string> = {
   black: '#141414', 黒: '#141414', ブラック: '#141414',
   gray: '#8a8a8a', grey: '#8a8a8a', グレー: '#8a8a8a', 灰色: '#8a8a8a', チャコール: '#3a3a3a', charcoal: '#3a3a3a', ライトグレー: '#c4c4c4', シルバー: '#c0c0c0', silver: '#c0c0c0',
   navy: '#1f2a44', ネイビー: '#1f2a44', 紺: '#1f2a44',
-  beige: '#d9c4a5', ベージュ: '#d9c4a5', キャメル: '#b5824a', camel: '#b5824a', サンド: '#d2b88a',
+  beige: '#d9c4a5', ベージュ: '#d9c4a5', キャメル: '#c6a070', camel: '#c6a070', サンド: '#d2b88a',
   brown: '#5a3a22', ブラウン: '#5a3a22', 茶: '#5a3a22', 茶色: '#5a3a22', ダークブラウン: '#3e2616', チョコ: '#3e2616',
   khaki: '#5a6b3a', カーキ: '#5a6b3a', olive: '#5a6b3a', オリーブ: '#5a6b3a',
   denim: '#2c3e5c', デニム: '#2c3e5c', indigo: '#2c3e5c', インディゴ: '#2c3e5c',
