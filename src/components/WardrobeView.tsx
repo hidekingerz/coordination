@@ -1,9 +1,10 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Category, ClothingItem } from '../types';
 import { ALL_CATEGORIES, CATEGORY_LABEL } from '../types';
 import { ItemCard } from './ItemCard';
 import { ItemForm } from './ItemForm';
-import { exportJson, parseImport } from '../lib/storage';
+import { ImportDialog } from './ImportDialog';
+import { exportJson, mergeWardrobe, type MergeMode } from '../lib/storage';
 import { SAMPLE_WARDROBE } from '../data/sample';
 
 interface Props {
@@ -15,7 +16,7 @@ export function WardrobeView({ wardrobe, onChange }: Props) {
   const [editing, setEditing] = useState<ClothingItem | null | 'new'>(null);
   const [filter, setFilter] = useState<Category | 'all'>('all');
   const [query, setQuery] = useState('');
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -57,24 +58,9 @@ export function WardrobeView({ wardrobe, onChange }: Props) {
     URL.revokeObjectURL(url);
   };
 
-  const importFile = async (file: File) => {
-    try {
-      const items = parseImport(await file.text());
-      const mode = wardrobe.length
-        ? confirm(`${items.length}件を読み込みます。\nOK: 既存に追加（同じIDは上書き）\nキャンセル: 既存を置き換え`)
-        : true;
-      if (mode) {
-        const map = new Map(wardrobe.map((i) => [i.id, i]));
-        for (const it of items) map.set(it.id, it);
-        onChange([...map.values()]);
-      } else {
-        onChange(items);
-      }
-    } catch (e) {
-      alert(`読み込みに失敗しました: ${(e as Error).message}`);
-    } finally {
-      if (fileRef.current) fileRef.current.value = '';
-    }
+  const applyImport = (items: ClothingItem[], mode: MergeMode) => {
+    onChange(mergeWardrobe(wardrobe, items, mode));
+    setImporting(false);
   };
 
   return (
@@ -93,16 +79,9 @@ export function WardrobeView({ wardrobe, onChange }: Props) {
         <button type="button" className="btn" onClick={download} disabled={!wardrobe.length}>
           エクスポート
         </button>
-        <button type="button" className="btn" onClick={() => fileRef.current?.click()}>
+        <button type="button" className="btn" onClick={() => setImporting(true)}>
           インポート
         </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/json"
-          hidden
-          onChange={(e) => e.target.files?.[0] && importFile(e.target.files[0])}
-        />
       </div>
 
       <div className="chips filter">
@@ -134,9 +113,20 @@ export function WardrobeView({ wardrobe, onChange }: Props) {
         </div>
       )}
 
+      {importing && (
+        <div className="modal-backdrop" onClick={() => setImporting(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <ImportDialog existingCount={wardrobe.length} onApply={applyImport} onClose={() => setImporting(false)} />
+          </div>
+        </div>
+      )}
+
       {wardrobe.length === 0 ? (
         <div className="empty">
-          <p>まだアイテムがありません。手持ちの服を登録するか、サンプルデータで試してみてください。</p>
+          <p>まだアイテムがありません。手持ちの服を登録するか、Gist / JSON から取り込むか、サンプルデータで試してみてください。</p>
+          <button type="button" className="btn" onClick={() => setImporting(true)}>
+            Gist / JSON から取り込む
+          </button>{' '}
           <button type="button" className="btn" onClick={() => onChange(SAMPLE_WARDROBE)}>
             サンプルデータを読み込む
           </button>
