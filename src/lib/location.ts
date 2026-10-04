@@ -77,10 +77,42 @@ export function locationKey(loc: Location): string {
   return `${loc.latitude.toFixed(2)},${loc.longitude.toFixed(2)}`;
 }
 
-/** ブラウザの位置情報から現在地を作る。取得できなければ reject */
+export type GeolocationFailureReason = 'unsupported' | 'denied' | 'unavailable' | 'timeout';
+
+const FAILURE_MESSAGE: Record<GeolocationFailureReason, string> = {
+  unsupported: 'この環境では位置情報を使えません (http の IP アドレスなど、安全なコンテキストでない可能性があります)',
+  denied: '位置情報の利用が許可されていません。アドレスバーのサイト設定から許可してください',
+  unavailable: '位置を取得できませんでした。OS の位置情報サービスがブラウザに許可されているか確認してください',
+  timeout: '位置情報の取得が時間切れになりました。もう一度お試しください',
+};
+
+/** 位置情報の取得失敗。理由とブラウザの生メッセージを持つ */
+export class GeolocationFailure extends Error {
+  constructor(
+    public readonly reason: GeolocationFailureReason,
+    /** ブラウザが返したメッセージ (診断用) */
+    public readonly detail = '',
+  ) {
+    super(FAILURE_MESSAGE[reason]);
+    this.name = 'GeolocationFailure';
+  }
+}
+
+function reasonOf(err: GeolocationPositionError): GeolocationFailureReason {
+  switch (err.code) {
+    case 1:
+      return 'denied';
+    case 3:
+      return 'timeout';
+    default:
+      return 'unavailable';
+  }
+}
+
+/** ブラウザの位置情報から現在地を作る。取得できなければ GeolocationFailure で reject */
 export function detectCurrentLocation(geo: Geolocation | undefined = globalThis.navigator?.geolocation): Promise<Location> {
   return new Promise((resolve, reject) => {
-    if (!geo) return reject(new Error('この環境では位置情報を取得できません'));
+    if (!geo) return reject(new GeolocationFailure('unsupported'));
     geo.getCurrentPosition(
       (pos) =>
         resolve({
@@ -89,8 +121,11 @@ export function detectCurrentLocation(geo: Geolocation | undefined = globalThis.
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
         }),
-      (err) => reject(new Error(err.message || '位置情報を取得できませんでした')),
-      { timeout: 10_000, maximumAge: 10 * 60_000 },
+      (err) => reject(new GeolocationFailure(reasonOf(err), err.message)),
+      // enableHighAccuracy: macOS の Chrome では低精度の要求が Chrome 独自のネットワーク測位に回され、
+      // 有線接続などで応答が返らず時間切れになる。高精度なら OS の位置情報サービスが使われ即座に返る。
+      // timeout: GPS のないノート PC では Wi-Fi 測位に 10 秒以上かかることがある
+      { enableHighAccuracy: true, timeout: 30_000, maximumAge: 10 * 60_000 },
     );
   });
 }

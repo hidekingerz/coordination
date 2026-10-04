@@ -51,7 +51,9 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
   const [forecastMin, setForecastMin] = useState<number | undefined>(undefined);
   const [forecast, setForecast] = useState<ForecastState>({ status: 'idle' });
   const [location, setLocation] = useState<Location>(() => loadLocation());
-  const [locating, setLocating] = useState<'idle' | 'busy' | 'error'>('idle');
+  const [locating, setLocating] = useState<{ status: 'idle' } | { status: 'busy' } | { status: 'error'; message: string }>({
+    status: 'idle',
+  });
   /**
    * 気温欄の値の出所。手入力なら日付を変えるまで予報で上書きしない。
    * 予報由来なら日付を変えた時点で消し、古い日の気温が残らないようにする。
@@ -89,16 +91,24 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
     };
   }, [dateStr, location]);
 
+  /** 位置情報の取得中に別の地点を選んだら、遅れて届いた結果を捨てるための連番 */
+  const locateSeq = useRef(0);
+
   const changeLocation = async (id: string) => {
+    const seq = ++locateSeq.current;
     if (id === CURRENT_LOCATION_ID) {
-      setLocating('busy');
+      setLocating({ status: 'busy' });
       try {
         const here = await detectCurrentLocation();
+        if (seq !== locateSeq.current) return;
         setLocation(here);
         saveLocation(here);
-        setLocating('idle');
-      } catch {
-        setLocating('error');
+        setLocating({ status: 'idle' });
+      } catch (e) {
+        if (seq !== locateSeq.current) return;
+        const message = e instanceof Error ? e.message : '位置情報を取得できませんでした';
+        console.warn('位置情報の取得に失敗', e);
+        setLocating({ status: 'error', message });
       }
       return;
     }
@@ -106,7 +116,7 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
     if (!preset) return;
     setLocation(preset);
     saveLocation(preset);
-    setLocating('idle');
+    setLocating({ status: 'idle' });
   };
   const [formality, setFormality] = useState<Formality | ''>('');
   const [mustInclude, setMustInclude] = useState<string>('');
@@ -187,7 +197,7 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
           </label>
           <label>
             <span>予報の地点</span>
-            <select value={location.id} onChange={(e) => void changeLocation(e.target.value)} disabled={locating === 'busy'}>
+            <select value={location.id} onChange={(e) => void changeLocation(e.target.value)}>
               {PRESET_LOCATIONS.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name}
@@ -195,8 +205,8 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
               ))}
               <option value={CURRENT_LOCATION_ID}>現在地 (位置情報を使う)</option>
             </select>
-            {locating === 'busy' && <span className="forecast muted">位置情報を取得中…</span>}
-            {locating === 'error' && <span className="forecast warn">位置情報を取得できませんでした。地点を選んでください</span>}
+            {locating.status === 'busy' && <span className="forecast muted">位置情報を取得中… (最大 30 秒。他の地点を選んで中断できます)</span>}
+            {locating.status === 'error' && <span className="forecast warn">{locating.message}</span>}
           </label>
           <label>
             <span>テイスト</span>
