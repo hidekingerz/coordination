@@ -2,7 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ClothingItem, Formality } from '../types';
 import { ALL_FORMALITIES, CATEGORY_LABEL, FORMALITY_LABEL, SEASON_LABEL, WARMTH_LABEL } from '../types';
 import { buildConditions } from '../lib/season';
-import { getTokyoForecast, isForecastAvailable, toDateKey, type DailyTemperature } from '../lib/weather';
+import { getForecast, isForecastAvailable, toDateKey, type DailyTemperature } from '../lib/weather';
+import {
+  CURRENT_LOCATION_ID,
+  PRESET_LOCATIONS,
+  detectCurrentLocation,
+  loadLocation,
+  saveLocation,
+  type Location,
+} from '../lib/location';
 import { FRESHNESS_PRESETS, suggestOutfits, type FreshnessMode, type Outfit } from '../lib/outfit';
 import { buildWearStats, daysBetween, statsFor, type WearLog } from '../lib/wear';
 import { buildFigure } from '../lib/figure';
@@ -40,6 +48,8 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
   const [dateStr, setDateStr] = useState(() => toDateKey(new Date()));
   const [tempStr, setTempStr] = useState('');
   const [forecast, setForecast] = useState<ForecastState>({ status: 'idle' });
+  const [location, setLocation] = useState<Location>(() => loadLocation());
+  const [locating, setLocating] = useState<'idle' | 'busy' | 'error'>('idle');
   /**
    * 気温欄の値の出所。手入力なら日付を変えるまで予報で上書きしない。
    * 予報由来なら日付を変えた時点で消し、古い日の気温が残らないようにする。
@@ -58,7 +68,7 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
     }
     let cancelled = false;
     setForecast({ status: 'loading' });
-    getTokyoForecast(date)
+    getForecast(date, location)
       .then((data) => {
         if (cancelled) return;
         setForecast({ status: 'ok', data });
@@ -73,7 +83,27 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [dateStr]);
+  }, [dateStr, location]);
+
+  const changeLocation = async (id: string) => {
+    if (id === CURRENT_LOCATION_ID) {
+      setLocating('busy');
+      try {
+        const here = await detectCurrentLocation();
+        setLocation(here);
+        saveLocation(here);
+        setLocating('idle');
+      } catch {
+        setLocating('error');
+      }
+      return;
+    }
+    const preset = PRESET_LOCATIONS.find((l) => l.id === id);
+    if (!preset) return;
+    setLocation(preset);
+    saveLocation(preset);
+    setLocating('idle');
+  };
   const [formality, setFormality] = useState<Formality | ''>('');
   const [mustInclude, setMustInclude] = useState<string>('');
   const [freshness, setFreshness] = useState<FreshnessMode>('balanced');
@@ -148,7 +178,20 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
                 setTempStr(e.target.value);
               }}
             />
-            <ForecastNote state={forecast} />
+            <ForecastNote state={forecast} locationName={location.name} />
+          </label>
+          <label>
+            <span>予報の地点</span>
+            <select value={location.id} onChange={(e) => void changeLocation(e.target.value)} disabled={locating === 'busy'}>
+              {PRESET_LOCATIONS.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+              <option value={CURRENT_LOCATION_ID}>現在地 (位置情報を使う)</option>
+            </select>
+            {locating === 'busy' && <span className="forecast muted">位置情報を取得中…</span>}
+            {locating === 'error' && <span className="forecast warn">位置情報を取得できませんでした。地点を選んでください</span>}
           </label>
           <label>
             <span>テイスト</span>
@@ -237,14 +280,14 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
   );
 }
 
-function ForecastNote({ state }: { state: ForecastState }) {
+function ForecastNote({ state, locationName }: { state: ForecastState; locationName: string }) {
   switch (state.status) {
     case 'loading':
-      return <span className="forecast muted">東京の予報を取得中…</span>;
+      return <span className="forecast muted">{locationName}の予報を取得中…</span>;
     case 'ok':
       return (
         <span className="forecast muted">
-          東京の予報: 最高 {Math.round(state.data.max)}℃ / 最低 {Math.round(state.data.min)}℃
+          {locationName}の予報: 最高 {Math.round(state.data.max)}℃ / 最低 {Math.round(state.data.min)}℃
         </span>
       );
     case 'error':

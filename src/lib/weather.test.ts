@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildForecastUrl, fetchTokyoForecast, getTokyoForecast, isForecastAvailable, parseForecast, toDateKey } from './weather';
+import { buildForecastUrl, fetchTokyoForecast, getForecast, getTokyoForecast, isForecastAvailable, parseForecast, toDateKey } from './weather';
 
 const today = new Date('2026-10-03T12:00:00');
 
@@ -136,9 +136,40 @@ describe('getTokyoForecast (cached)', () => {
   it('ignores corrupted cache contents', async () => {
     const calls: string[] = [];
     const storage = memoryStorage();
-    storage.setItem('coordination.weather.v1', '{not json');
+    storage.setItem('coordination.weather.v2', '{not json');
     const res = await getTokyoForecast(today, { fetchImpl: makeFetch(calls), storage, now: () => t0 });
     expect(res).toEqual({ max: 24.1, min: 17.3 });
     expect(calls).toHaveLength(1);
+  });
+});
+
+describe('location-aware forecast', () => {
+  const osaka = { id: 'osaka', name: '大阪', latitude: 34.6937, longitude: 135.5023 };
+  const makeFetch = (calls: string[]) => async (input: string) => {
+    calls.push(input);
+    const day = new URL(input).searchParams.get('start_date');
+    return new Response(JSON.stringify({ daily: { time: [day], temperature_2m_max: [20], temperature_2m_min: [10] } }), { status: 200 });
+  };
+  const memoryStorage = () => {
+    const m = new Map<string, string>();
+    return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
+  };
+  const t0 = new Date('2026-10-03T08:00:00').getTime();
+
+  it('builds the URL for the given location', () => {
+    const url = new URL(buildForecastUrl(today, osaka));
+    expect(url.searchParams.get('latitude')).toBe('34.6937');
+    expect(url.searchParams.get('longitude')).toBe('135.5023');
+  });
+
+  it('caches per location, not only per date', async () => {
+    const calls: string[] = [];
+    const storage = memoryStorage();
+    await getForecast(today, osaka, { fetchImpl: makeFetch(calls), storage, now: () => t0 });
+    await getForecast(today, osaka, { fetchImpl: makeFetch(calls), storage, now: () => t0 });
+    await getTokyoForecast(today, { fetchImpl: makeFetch(calls), storage, now: () => t0 });
+    expect(calls).toHaveLength(2);
+    expect(new URL(calls[0]).searchParams.get('latitude')).toBe('34.6937');
+    expect(new URL(calls[1]).searchParams.get('latitude')).toBe('35.6762');
   });
 });
