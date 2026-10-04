@@ -1,6 +1,6 @@
-/** 東京 (Open-Meteo の forecast API) の日別気温を取得する */
+/** Open-Meteo の forecast API から指定地点の日別気温を取得する */
 
-const TOKYO = { latitude: 35.6762, longitude: 139.6503 } as const;
+import { DEFAULT_LOCATION, locationKey, type Location } from './location';
 const ENDPOINT = 'https://api.open-meteo.com/v1/forecast';
 /** forecast API が返せる範囲: 過去 92 日 〜 先 15 日 */
 const PAST_DAYS = 92;
@@ -31,11 +31,11 @@ export function isForecastAvailable(date: Date, today: Date = new Date()): boole
   return diffDays >= -PAST_DAYS && diffDays <= FUTURE_DAYS;
 }
 
-export function buildForecastUrl(date: Date): string {
+export function buildForecastUrl(date: Date, loc: Location = DEFAULT_LOCATION): string {
   const key = toDateKey(date);
   const params = new URLSearchParams({
-    latitude: String(TOKYO.latitude),
-    longitude: String(TOKYO.longitude),
+    latitude: String(loc.latitude),
+    longitude: String(loc.longitude),
     daily: 'temperature_2m_max,temperature_2m_min',
     timezone: 'Asia/Tokyo',
     start_date: key,
@@ -59,8 +59,12 @@ export function parseForecast(json: unknown, dateKey: string): DailyTemperature 
   return { max, min };
 }
 
-export async function fetchTokyoForecast(date: Date, fetchImpl: FetchLike = (u) => fetch(u)): Promise<DailyTemperature> {
-  const res = await fetchImpl(buildForecastUrl(date));
+export async function fetchForecast(
+  date: Date,
+  loc: Location = DEFAULT_LOCATION,
+  fetchImpl: FetchLike = (u) => fetch(u),
+): Promise<DailyTemperature> {
+  const res = await fetchImpl(buildForecastUrl(date, loc));
   if (!res.ok) throw new Error(`天気 API がエラーを返しました (${res.status})`);
   const parsed = parseForecast(await res.json(), toDateKey(date));
   if (!parsed) throw new Error('天気 API の応答に気温がありません');
@@ -69,7 +73,7 @@ export async function fetchTokyoForecast(date: Date, fetchImpl: FetchLike = (u) 
 
 // ---- キャッシュ ----
 
-const CACHE_KEY = 'coordination.weather.v1';
+const CACHE_KEY = 'coordination.weather.v2';
 /** 予報は数時間で更新されるので、同じ日のデータは 6 時間だけ再利用する */
 const CACHE_TTL_MS = 6 * 3_600_000;
 
@@ -132,17 +136,21 @@ function writeCache(storage: StorageLike | null, cache: CacheMap, now: number): 
   }
 }
 
-/** 東京の日別気温を取得する。同じ日は 6 時間キャッシュして API 呼び出しを減らす */
-export async function getTokyoForecast(date: Date, opts: GetForecastOptions = {}): Promise<DailyTemperature> {
+/** 指定地点の日別気温を取得する。同じ地点・同じ日は 6 時間キャッシュして API 呼び出しを減らす */
+export async function getForecast(date: Date, loc: Location, opts: GetForecastOptions = {}): Promise<DailyTemperature> {
   const storage = opts.storage === undefined ? defaultStorage() : opts.storage;
   const now = opts.now ? opts.now() : Date.now();
-  const key = toDateKey(date);
+  const key = `${locationKey(loc)}/${toDateKey(date)}`;
 
   const cache = readCache(storage);
   const hit = cache[key];
   if (isFreshEntry(hit, now)) return { max: hit.max, min: hit.min };
 
-  const data = await fetchTokyoForecast(date, opts.fetchImpl);
+  const data = await fetchForecast(date, loc, opts.fetchImpl);
   writeCache(storage, { ...cache, [key]: { ...data, fetchedAt: now } }, now);
   return data;
 }
+
+/** 東京の予報。既存の呼び出し互換用 */
+export const fetchTokyoForecast = (date: Date, fetchImpl?: FetchLike) => fetchForecast(date, DEFAULT_LOCATION, fetchImpl);
+export const getTokyoForecast = (date: Date, opts?: GetForecastOptions) => getForecast(date, DEFAULT_LOCATION, opts);
