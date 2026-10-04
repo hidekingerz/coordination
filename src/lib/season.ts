@@ -64,10 +64,13 @@ export interface Conditions {
   season: Season;
   acceptableSeasons: Season[];
   targetWarmth: Warmth;
+  /** 日中の気温 (最高気温)。厚さの判定に使う */
   temperature?: number;
+  /** 最低気温。朝晩の冷え込みの注意に使う */
+  minTemperature?: number;
 }
 
-export function buildConditions(date: Date, temperature?: number): Conditions {
+export function buildConditions(date: Date, temperature?: number, minTemperature?: number): Conditions {
   const season = seasonOf(date);
   const targetWarmth =
     temperature !== undefined && !Number.isNaN(temperature)
@@ -79,5 +82,6 @@ export function buildConditions(date: Date, temperature?: number): Conditions {
     acceptableSeasons: acceptableSeasons(date),
     targetWarmth,
     temperature,
+    minTemperature: minTemperature !== undefined && !Number.isNaN(minTemperature) ? minTemperature : undefined,
   };
 }
