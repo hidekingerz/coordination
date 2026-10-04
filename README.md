@@ -27,7 +27,7 @@ npm run dev        # http://localhost:5173
 ```
 
 ```bash
-npm test           # ロジックのユニットテスト (vitest)
+npm test           # ユニットテスト + コンポーネントテスト (vitest, jsdom)
 npm run build      # 型チェック + 本番ビルド (dist/)
 npm run preview    # ビルド結果をローカルで確認
 ```
