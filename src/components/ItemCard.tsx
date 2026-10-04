@@ -1,5 +1,5 @@
 import type { ClothingItem } from '../types';
-import { CATEGORY_LABEL, FORMALITY_LABEL, SEASON_LABEL } from '../types';
+import { BOTTOMS_SHAPE_LABEL, CATEGORY_LABEL, FORMALITY_LABEL, SEASON_LABEL } from '../types';
 import { colorLabel } from '../lib/color';
 import { describeLastWorn, type WearStats } from '../lib/wear';
 import { Swatch } from './Swatch';
@@ -32,7 +32,7 @@ export function ItemCard({ item, onEdit, onDelete, wear, onWearToday, compact }:
       <div className="item-body">
         <div className="item-title">
           <span className="item-category">
-            {CATEGORY_LABEL[item.category]}
+            {item.category === 'bottoms' && item.shape ? BOTTOMS_SHAPE_LABEL[item.shape] : CATEGORY_LABEL[item.category]}
             {item.brand ? <span className="item-brand"> · {item.brand}</span> : null}
           </span>
           <strong>{item.name}</strong>

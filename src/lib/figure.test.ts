@@ -68,3 +68,21 @@ describe('buildFigure', () => {
     expect(parts.every((p) => p.variant === 'regular')).toBe(true);
   });
 });
+
+describe('buildFigure bottoms shape', () => {
+  const bottoms = (id: string, shape?: ClothingItem['shape']) => item({ id, category: 'bottoms', shape });
+
+  it('draws bottoms without a shape as regular pants (existing data)', () => {
+    expect(buildFigure([bottoms('b')])[0].variant).toBe('regular');
+  });
+
+  it('draws pants as regular, shorts as short and skirts as skirt', () => {
+    expect(buildFigure([bottoms('p', 'pants')])[0].variant).toBe('regular');
+    expect(buildFigure([bottoms('s', 'shorts')])[0].variant).toBe('short');
+    expect(buildFigure([bottoms('k', 'skirt')])[0].variant).toBe('skirt');
+  });
+
+  it('ignores shape on non-bottoms items', () => {
+    expect(buildFigure([item({ id: 't', category: 'tops', warmth: 3, shape: 'skirt' })])[0].variant).toBe('long');
+  });
+});

@@ -103,3 +103,25 @@ describe('stableId / mergeWardrobe', () => {
     expect(mergeWardrobe([a], [b], 'merge')).toHaveLength(2);
   });
 });
+
+describe('parseImport shape handling', () => {
+  it('keeps a valid bottoms shape', () => {
+    const [item] = parseImport(JSON.stringify([{ ...base, category: 'bottoms', shape: 'skirt' }]));
+    expect(item.shape).toBe('skirt');
+  });
+
+  it('accepts japanese shape labels in hand-written data', () => {
+    const [item] = parseImport(JSON.stringify([{ name: 'a', category: 'ボトムス', 形: 'スカート' }]));
+    expect(item.shape).toBe('skirt');
+  });
+
+  it('ignores shape on non-bottoms items', () => {
+    const [item] = parseImport(JSON.stringify([{ ...base, category: 'tops', shape: 'skirt' }]));
+    expect(item.shape).toBeUndefined();
+  });
+
+  it('drops an unknown shape value', () => {
+    const [item] = parseImport(JSON.stringify([{ ...base, category: 'bottoms', shape: 'kilt' }]));
+    expect(item.shape).toBeUndefined();
+  });
+});

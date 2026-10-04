@@ -57,13 +57,23 @@ function shapeOf(p: FigurePart): ReactNode {
           )}
         </>
       );
-    case 'bottoms':
+    case 'bottoms': {
+      const body =
+        p.variant === 'skirt' ? (
+          // 腰から膝上に向けて広がる台形
+          <path d="M40,102 H80 L90,166 H30 Z" fill={fill} />
+        ) : p.variant === 'short' ? (
+          <path d="M40,102 H80 V150 H62 V132 H58 V150 H40 Z" fill={fill} />
+        ) : (
+          <path d="M40,102 H80 V206 H62 V132 H58 V206 H40 Z" fill={fill} />
+        );
       return (
         <>
-          <path d="M40,102 H80 V206 H62 V132 H58 V206 H40 Z" fill={fill} />
+          {body}
           {accent && <rect x="40" y="102" width="40" height="5" fill={accent} />}
         </>
       );
+    }
     case 'tops': {
       const sleeve = p.variant === 'short' ? 28 : 64;
       return (

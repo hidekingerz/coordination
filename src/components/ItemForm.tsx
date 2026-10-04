@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import type { Category, ClothingItem, Formality, Season, Warmth } from '../types';
+import type { BottomsShape, Category, ClothingItem, Formality, Season, Warmth } from '../types';
 import {
+  ALL_BOTTOMS_SHAPES,
   ALL_CATEGORIES,
   ALL_FORMALITIES,
   ALL_SEASONS,
+  BOTTOMS_SHAPE_LABEL,
   CATEGORY_LABEL,
   FORMALITY_LABEL,
   SEASON_LABEL,
@@ -41,6 +43,7 @@ export function ItemForm({ initial, wardrobe = [], onSubmit, onCancel }: Props) 
   const [name, setName] = useState(initial?.name ?? '');
   const [brand, setBrand] = useState(initial?.brand ?? '');
   const [category, setCategory] = useState<Category>(initial?.category ?? 'tops');
+  const [shape, setShape] = useState<BottomsShape>(initial?.shape ?? 'pants');
   const [color, setColor] = useState(initial?.color ?? '#f5f5f0');
   const [hasSub, setHasSub] = useState(Boolean(initial?.subColor));
   const [subColor, setSubColor] = useState(initial?.subColor ?? '#1f2a44');
@@ -69,6 +72,7 @@ export function ItemForm({ initial, wardrobe = [], onSubmit, onCancel }: Props) 
       name: name.trim(),
       brand: normalizeBrand(brand),
       category,
+      shape: category === 'bottoms' ? shape : undefined,
       color: hex,
       subColor: sub ?? undefined,
       seasons: ALL_SEASONS.filter((s) => seasons.includes(s)),
@@ -114,6 +118,19 @@ export function ItemForm({ initial, wardrobe = [], onSubmit, onCancel }: Props) 
           ))}
         </select>
       </label>
+
+      {category === 'bottoms' && (
+        <label>
+          形
+          <select value={shape} onChange={(e) => setShape(e.target.value as BottomsShape)}>
+            {ALL_BOTTOMS_SHAPES.map((sh) => (
+              <option key={sh} value={sh}>
+                {BOTTOMS_SHAPE_LABEL[sh]}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       <ImageColorPicker
         imageUrl={imageUrl}

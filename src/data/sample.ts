@@ -12,7 +12,8 @@ const mk = (
   tags: string[] = [],
   subColor?: string,
   brand?: string,
-): ClothingItem => ({ id, name, brand, category, color, subColor, seasons, warmth, formality, tags, createdAt: now });
+  shape?: ClothingItem['shape'],
+): ClothingItem => ({ id, name, brand, category, shape, color, subColor, seasons, warmth, formality, tags, createdAt: now });
 
 export const SAMPLE_WARDROBE: ClothingItem[] = [
   // アウター
@@ -37,7 +38,7 @@ export const SAMPLE_WARDROBE: ClothingItem[] = [
   mk('s-bottoms-3', 'ベージュのチノパン', 'bottoms', '#cdb48c', ['spring', 'summer', 'autumn'], 2, 'casual', ['チノ'], undefined, 'ユニクロ'),
   mk('s-bottoms-4', 'グレーのウールパンツ', 'bottoms', '#6b6b6b', ['autumn', 'winter'], 4, 'smart', ['ウール']),
   mk('s-bottoms-5', 'オフホワイトのワイドパンツ', 'bottoms', '#ece7dc', ['spring', 'summer'], 1, 'smart', ['ワイド']),
-  mk('s-bottoms-6', 'カーキのショートパンツ', 'bottoms', '#7a7a55', ['summer'], 1, 'casual', ['ショーツ']),
+  mk('s-bottoms-6', 'カーキのショートパンツ', 'bottoms', '#7a7a55', ['summer'], 1, 'casual', ['ショーツ'], undefined, undefined, 'shorts'),
   // ワンピース
   mk('s-onepiece-1', 'ネイビーのセットアップ', 'onepiece', '#202a46', ['spring', 'autumn', 'winter'], 3, 'formal', ['セットアップ']),
   // シューズ
