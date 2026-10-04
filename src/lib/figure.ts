@@ -1,7 +1,7 @@
 import type { Category, ClothingItem } from '../types';
 
-/** 服の形のバリエーション。トップスは袖丈、アウターは着丈を表す */
-export type FigureVariant = 'short' | 'regular' | 'long';
+/** 服の形のバリエーション。トップスは袖丈、アウターは着丈、ボトムスは丈と形を表す */
+export type FigureVariant = 'short' | 'regular' | 'long' | 'skirt';
 
 export interface FigurePart {
   kind: Category;
@@ -23,6 +23,8 @@ function variantOf(item: ClothingItem): FigureVariant {
       return item.warmth <= 2 ? 'short' : 'long';
     case 'outer':
       return item.warmth >= 5 ? 'long' : 'regular';
+    case 'bottoms':
+      return item.shape === 'skirt' ? 'skirt' : item.shape === 'shorts' ? 'short' : 'regular';
     default:
       return 'regular';
   }

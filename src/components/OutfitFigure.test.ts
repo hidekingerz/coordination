@@ -44,3 +44,17 @@ describe('OutfitFigure', () => {
     expect(html).not.toContain('data-part=');
   });
 });
+
+describe('OutfitFigure bottoms variants', () => {
+  it('renders distinct shapes for pants, shorts and skirt', () => {
+    const pants = render([{ ...base, kind: 'bottoms', variant: 'regular', color: '#111111' }]);
+    const shorts = render([{ ...base, kind: 'bottoms', variant: 'short', color: '#111111' }]);
+    const skirt = render([{ ...base, kind: 'bottoms', variant: 'skirt', color: '#111111' }]);
+    expect(pants).toContain('data-part="bottoms:regular"');
+    expect(shorts).toContain('data-part="bottoms:short"');
+    expect(skirt).toContain('data-part="bottoms:skirt"');
+    // data-part 以外の描画内容 (パスや矩形) が実際に異なること
+    const shapeOnly = (html: string) => html.replace(/data-part="[^"]*"/g, '');
+    expect(new Set([pants, shorts, skirt].map(shapeOnly)).size).toBe(3);
+  });
+});

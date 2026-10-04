@@ -1,5 +1,5 @@
-import type { Category, ClothingItem, Formality, Season, Warmth } from '../types';
-import { ALL_SEASONS } from '../types';
+import type { BottomsShape, Category, ClothingItem, Formality, Season, Warmth } from '../types';
+import { ALL_BOTTOMS_SHAPES, ALL_SEASONS } from '../types';
 import { normalizeBrand } from './brand';
 import { normalizeHex } from './color';
 import { isEntry, type WearLog } from './wear';
@@ -232,14 +232,33 @@ export function coerceItem(raw: unknown, index = 0): { item: ClothingItem; warni
     if (o.formality !== undefined || o.テイスト !== undefined) warnings.push(`${label}: テイストを解釈できずカジュアルにしました`);
   }
 
+  const shape = category === 'bottoms' ? parseBottomsShape(o.shape ?? o.形) : undefined;
+
   const id = typeof o.id === 'string' && o.id.trim() ? o.id.trim() : stableId([category, name, brand]);
   const imageUrl = typeof o.imageUrl === 'string' && o.imageUrl.trim() ? o.imageUrl.trim() : undefined;
   const createdAt = typeof o.createdAt === 'string' ? o.createdAt : new Date().toISOString();
 
   return {
-    item: { id, name, brand, category, color, subColor, seasons, warmth, formality, tags: parseTags(o.tags ?? o.タグ), imageUrl, createdAt },
+    item: { id, name, brand, category, shape, color, subColor, seasons, warmth, formality, tags: parseTags(o.tags ?? o.タグ), imageUrl, createdAt },
     warnings,
   };
+}
+
+const BOTTOMS_SHAPE_ALIASES: Record<string, BottomsShape> = {
+  pants: 'pants',
+  パンツ: 'pants',
+  ズボン: 'pants',
+  shorts: 'shorts',
+  ショートパンツ: 'shorts',
+  ショーツ: 'shorts',
+  skirt: 'skirt',
+  スカート: 'skirt',
+};
+
+/** ボトムスの形。英語の値と日本語ラベルを受け付け、解釈できなければ未設定 */
+export function parseBottomsShape(raw: unknown): BottomsShape | undefined {
+  if (typeof raw !== 'string') return undefined;
+  return BOTTOMS_SHAPE_ALIASES[raw.trim().toLowerCase()] ?? BOTTOMS_SHAPE_ALIASES[raw.trim()];
 }
 
 export type MergeMode = 'merge' | 'replace';
@@ -255,7 +274,8 @@ export function mergeWardrobe(existing: ClothingItem[], incoming: ClothingItem[]
 /** 型が合わない任意項目を落として、安全な形に整える */
 function sanitize(item: ClothingItem): ClothingItem {
   const brand = typeof item.brand === 'string' ? normalizeBrand(item.brand) : undefined;
-  return { ...item, brand };
+  const shape = ALL_BOTTOMS_SHAPES.includes(item.shape as BottomsShape) ? item.shape : undefined;
+  return { ...item, brand, shape };
 }
 
 function isItem(x: unknown): x is ClothingItem {
