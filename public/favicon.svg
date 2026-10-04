@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="7" fill="#2b4c7e"/>
+  <!-- Tシャツのシルエット -->
+  <path d="M11 7 L13.5 5.5 Q16 8 18.5 5.5 L21 7 L26 10.5 L23.5 14.5 L21.5 13.5 L21.5 25.5 L10.5 25.5 L10.5 13.5 L8.5 14.5 L6 10.5 Z" fill="#f7f5f1"/>
+</svg>
