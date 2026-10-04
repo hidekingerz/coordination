@@ -7,6 +7,8 @@ import { ImportDialog } from './ImportDialog';
 import { exportJson, mergeWardrobe, type MergeMode } from '../lib/storage';
 import { buildWearStats, statsFor, toDateKey, type WearLog } from '../lib/wear';
 import { SAMPLE_WARDROBE } from '../data/sample';
+import { brandCounts, filterWardrobe } from '../lib/filter';
+import { knownBrands } from '../lib/brand';
 
 interface Props {
   wardrobe: ClothingItem[];
@@ -22,6 +24,7 @@ type SortMode = 'category' | 'unworn' | 'recent';
 export function WardrobeView({ wardrobe, wearLog, onChange, onWear, onUnwear, onImportWearLog }: Props) {
   const [editing, setEditing] = useState<ClothingItem | null | 'new'>(null);
   const [filter, setFilter] = useState<Category | 'all'>('all');
+  const [brand, setBrand] = useState<string | 'all'>('all');
   const [query, setQuery] = useState('');
   const [importing, setImporting] = useState(false);
   const [sort, setSort] = useState<SortMode>('category');
@@ -29,17 +32,13 @@ export function WardrobeView({ wardrobe, wearLog, onChange, onWear, onUnwear, on
   const today = toDateKey(new Date());
   const stats = useMemo(() => buildWearStats(wearLog, today), [wearLog, today]);
 
+  const brands = useMemo(() => knownBrands(wardrobe), [wardrobe]);
+  const brandCount = useMemo(() => brandCounts(wardrobe), [wardrobe]);
+  // 選択中のブランドが削除・改名で消えたら「すべて」に戻す
+  const activeBrand = brand !== 'all' && !brands.includes(brand) ? 'all' : brand;
+
   const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return wardrobe
-      .filter((i) => filter === 'all' || i.category === filter)
-      .filter(
-        (i) =>
-          !q ||
-          i.name.toLowerCase().includes(q) ||
-          (i.brand?.toLowerCase().includes(q) ?? false) ||
-          i.tags.some((t) => t.toLowerCase().includes(q)),
-      )
+    return filterWardrobe(wardrobe, { category: filter, brand: activeBrand, query })
       .sort((a, b) => {
         if (sort === 'unworn') {
           // 未着用を先頭に、あとは最後に着た日が古い順
@@ -53,7 +52,7 @@ export function WardrobeView({ wardrobe, wearLog, onChange, onWear, onUnwear, on
         }
         return ALL_CATEGORIES.indexOf(a.category) - ALL_CATEGORIES.indexOf(b.category);
       });
-  }, [wardrobe, filter, query, sort, stats]);
+  }, [wardrobe, filter, activeBrand, query, sort, stats]);
 
   // 履歴が半数以上にたまるまでは「未着用」を数えない (最初はほぼ全部が未着用で案内にならない)
   const unwornCount = useMemo(() => {
@@ -147,6 +146,24 @@ export function WardrobeView({ wardrobe, wearLog, onChange, onWear, onUnwear, on
           </button>
         ))}
       </div>
+
+      {brands.length > 0 && (
+        <div className="chips filter brands" aria-label="ブランドで絞り込み">
+          <button type="button" className={`chip ${activeBrand === 'all' ? 'on' : ''}`} onClick={() => setBrand('all')}>
+            全ブランド
+          </button>
+          {brands.map((b) => (
+            <button
+              key={b}
+              type="button"
+              className={`chip ${activeBrand === b ? 'on' : ''}`}
+              onClick={() => setBrand(activeBrand === b ? 'all' : b)}
+            >
+              {b} ({brandCount[b]})
+            </button>
+          ))}
+        </div>
+      )}
 
       {editing && (
         <div className="modal-backdrop" onClick={() => setEditing(null)}>
