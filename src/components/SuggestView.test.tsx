@@ -18,7 +18,8 @@ function renderView() {
 
 const tempInput = () => screen.getByPlaceholderText('例: 18') as HTMLInputElement;
 const dateInput = () => document.querySelector('input[type=date]') as HTMLInputElement;
-const locationSelect = () => screen.getByLabelText('予報の地点') as HTMLSelectElement;
+// ラベル内に取得中の注記が入ることがあるので部分一致で探す
+const locationSelect = () => screen.getByLabelText(/予報の地点/) as HTMLSelectElement;
 
 /** 解決タイミングを手で制御できる Promise */
 function deferred<T>() {
@@ -87,6 +88,34 @@ describe('SuggestView forecast', () => {
     fireEvent.change(locationSelect(), { target: { value: 'osaka' } });
     await screen.findByText('大阪の予報: 最高 20℃ / 最低 12℃');
     expect(getForecast).toHaveBeenLastCalledWith(expect.any(Date), expect.objectContaining({ name: '大阪' }));
+    expect(JSON.parse(localStorage.getItem('coordination.location.v1') ?? '{}').id).toBe('osaka');
+  });
+});
+
+describe('SuggestView current location', () => {
+  it('lets the user pick a preset while locating and ignores the late geolocation result', async () => {
+    getForecast.mockResolvedValue({ max: 20, min: 12 });
+    let resolveGeo!: (pos: GeolocationPosition) => void;
+    const geo = {
+      getCurrentPosition: (ok: PositionCallback) => {
+        resolveGeo = ok;
+      },
+    } as unknown as Geolocation;
+    Object.defineProperty(navigator, 'geolocation', { value: geo, configurable: true });
+
+    renderView();
+    await waitFor(() => expect(tempInput().value).toBe('20'));
+    fireEvent.change(locationSelect(), { target: { value: 'current' } });
+    expect(screen.getByText(/位置情報を取得中/)).toBeTruthy();
+    expect(locationSelect().disabled).toBe(false);
+
+    fireEvent.change(locationSelect(), { target: { value: 'osaka' } });
+    await screen.findByText('大阪の予報: 最高 20℃ / 最低 12℃');
+
+    resolveGeo({ coords: { latitude: 1, longitude: 2 } } as GeolocationPosition);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(screen.queryByText(/位置情報を取得中/)).toBeNull();
+    expect(screen.getByText('大阪の予報: 最高 20℃ / 最低 12℃')).toBeTruthy();
     expect(JSON.parse(localStorage.getItem('coordination.location.v1') ?? '{}').id).toBe('osaka');
   });
 });
