@@ -45,3 +45,16 @@ describe('warmth', () => {
     expect(c.targetWarmth).toBe(2);
   });
 });
+
+describe('buildConditions with min temperature', () => {
+  it('carries the minimum temperature alongside the maximum', () => {
+    const c = buildConditions(new Date('2026-10-15T12:00:00'), 20, 9);
+    expect(c.temperature).toBe(20);
+    expect(c.minTemperature).toBe(9);
+    expect(c.targetWarmth).toBe(3);
+  });
+
+  it('leaves minTemperature undefined when not given', () => {
+    expect(buildConditions(new Date('2026-10-15T12:00:00'), 20).minTemperature).toBeUndefined();
+  });
+});

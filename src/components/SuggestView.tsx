@@ -47,6 +47,8 @@ function parseDate(dateStr: string): Date | null {
 export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
   const [dateStr, setDateStr] = useState(() => toDateKey(new Date()));
   const [tempStr, setTempStr] = useState('');
+  /** 気温欄が予報由来のときだけ、その日の最低気温も条件に入れる */
+  const [forecastMin, setForecastMin] = useState<number | undefined>(undefined);
   const [forecast, setForecast] = useState<ForecastState>({ status: 'idle' });
   const [location, setLocation] = useState<Location>(() => loadLocation());
   const [locating, setLocating] = useState<'idle' | 'busy' | 'error'>('idle');
@@ -61,6 +63,7 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
       setTempStr('');
       tempSource.current = null;
     }
+    setForecastMin(undefined);
     const date = parseDate(dateStr);
     if (!date || !isForecastAvailable(date)) {
       setForecast({ status: 'unavailable' });
@@ -74,6 +77,7 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
         setForecast({ status: 'ok', data });
         if (tempSource.current !== 'manual') {
           setTempStr(String(Math.round(data.max)));
+          setForecastMin(data.min);
           tempSource.current = 'forecast';
         }
       })
@@ -119,8 +123,8 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
 
   const conditions = useMemo(() => {
     const temp = tempStr.trim() === '' ? undefined : Number(tempStr);
-    return buildConditions(parseDate(dateStr) ?? new Date(), temp);
-  }, [dateStr, tempStr]);
+    return buildConditions(parseDate(dateStr) ?? new Date(), temp, forecastMin);
+  }, [dateStr, tempStr, forecastMin]);
 
   const run = () => {
     setResults(
@@ -175,6 +179,7 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
               value={tempStr}
               onChange={(e) => {
                 tempSource.current = 'manual';
+                setForecastMin(undefined);
                 setTempStr(e.target.value);
               }}
             />

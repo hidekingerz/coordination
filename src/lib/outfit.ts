@@ -104,6 +104,23 @@ function warmthScore(items: ClothingItem[], target: Warmth): { score: number; wa
   return { score, warning };
 }
 
+/** 日較差がこれ以上なら朝晩の冷え込みを注意する */
+const CHILL_RANGE = 10;
+/** 最低気温がこれ以下なら日較差に関係なく注意する */
+const CHILL_MIN = 10;
+
+/**
+ * アウターのないコーデで、朝晩が冷えそうなときの注意。
+ * 最高気温で厚さを決めているため、最低気温との差が大きい日に羽織りを勧める。
+ */
+function chillWarning(items: ClothingItem[], c: Conditions): string | undefined {
+  if (c.temperature === undefined || c.minTemperature === undefined) return undefined;
+  if (items.some((i) => i.category === 'outer')) return undefined;
+  const range = c.temperature - c.minTemperature;
+  if (range < CHILL_RANGE && c.minTemperature > CHILL_MIN) return undefined;
+  return `朝晩は冷えそうです (最低 ${Math.round(c.minTemperature)}℃)。羽織りがあると安心です`;
+}
+
 function formalityScore(items: ClothingItem[], preferred?: Formality): number {
   const ranks = items.filter((i) => i.category !== 'accessory').map((i) => FORMALITY_RANK[i.formality]);
   if (ranks.length === 0) return 1;
@@ -156,6 +173,8 @@ export function scoreOutfit(items: ClothingItem[], opts: SuggestOptions): Outfit
     );
   }
   if (warmth.warning) warnings.push(warmth.warning);
+  const chill = chillWarning(items, conditions);
+  if (chill) warnings.push(chill);
   if (formality >= 0.9) reasons.push(`${FORMALITY_LABEL[dominantFormality(items)]}でテイストが統一`);
   else if (formality < 0.4) warnings.push('テイストがばらついています');
   if (offSeason.length) warnings.push(`季節外れ: ${offSeason.map((i) => i.name).join('、')}`);

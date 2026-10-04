@@ -107,3 +107,34 @@ describe('suggestOutfits with wear history', () => {
     expect(scored.warnings.join(' ')).toMatch(/最近着ています/);
   });
 });
+
+describe('morning/evening chill warning', () => {
+  const date = new Date('2026-10-15T12:00:00');
+  const noOuter = (o: { items: { category: string }[] }) => !o.items.some((i) => i.category === 'outer');
+
+  it('warns on outfits without outerwear when the daily range is 10℃ or more', () => {
+    const res = suggestOutfits(SAMPLE_WARDROBE, { conditions: buildConditions(date, 22, 11) });
+    const bare = res.filter(noOuter);
+    expect(bare.length).toBeGreaterThan(0);
+    for (const o of bare) expect(o.warnings.some((w) => w.includes('朝晩') && w.includes('11℃'))).toBe(true);
+  });
+
+  it('warns on outfits without outerwear when the minimum is 10℃ or lower even with a small range', () => {
+    const res = suggestOutfits(SAMPLE_WARDROBE, { conditions: buildConditions(date, 17, 9) });
+    const bare = res.filter(noOuter);
+    expect(bare.length).toBeGreaterThan(0);
+    for (const o of bare) expect(o.warnings.some((w) => w.includes('朝晩'))).toBe(true);
+  });
+
+  it('does not warn when outerwear is included', () => {
+    const res = suggestOutfits(SAMPLE_WARDROBE, { conditions: buildConditions(date, 22, 11) });
+    const withOuter = res.filter((o) => !noOuter(o));
+    for (const o of withOuter) expect(o.warnings.some((w) => w.includes('朝晩'))).toBe(false);
+  });
+
+  it('does not warn when the range is small and the minimum is mild, or when min is unknown', () => {
+    const mild = suggestOutfits(SAMPLE_WARDROBE, { conditions: buildConditions(date, 24, 18) });
+    const unknown = suggestOutfits(SAMPLE_WARDROBE, { conditions: buildConditions(date, 24) });
+    for (const o of [...mild, ...unknown]) expect(o.warnings.some((w) => w.includes('朝晩'))).toBe(false);
+  });
+});
