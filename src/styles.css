@@ -144,3 +144,47 @@ body {
   .app { padding: 12px; }
   .toolbar .search { flex: 1; min-width: 0; }
 }
+
+/* インポートダイアログ */
+.import-dialog { display: flex; flex-direction: column; gap: 14px; }
+.import-dialog h3 { margin: 0; }
+.import-dialog h4 { margin: 0 0 6px; font-size: 0.95rem; }
+.import-section { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+.import-section p.muted { margin: 0 0 8px; }
+.import-row { display: flex; gap: 8px; align-items: center; }
+.import-row.end { justify-content: flex-end; margin-top: 8px; }
+.import-row input { flex: 1; min-width: 0; }
+.import-dialog input[type='url'], .import-dialog textarea {
+  padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 0.95rem; width: 100%;
+}
+.import-dialog textarea { font-family: ui-monospace, monospace; font-size: 0.85rem; resize: vertical; }
+.import-error { white-space: pre-wrap; margin: 0; }
+.import-preview { background: var(--bg); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.preview-list { list-style: none; margin: 0; padding: 0; font-size: 0.9rem; display: grid; gap: 2px; }
+.warnings { font-size: 0.85rem; color: var(--warn); }
+.warnings p { margin: 0 0 4px; }
+.warnings ul { margin: 0; padding-left: 18px; }
+.link { background: none; border: none; color: var(--accent); cursor: pointer; padding: 0; font-size: 0.85rem; }
+.import-preview .chips label { cursor: pointer; }
+
+/* 着用履歴 */
+.wear { border-radius: 999px; padding: 0 8px; border: 1px solid var(--border); font-size: 0.75rem; }
+.wear.never { color: var(--accent); border-color: var(--accent); }
+.wear.recent { color: var(--muted); }
+.wear.stale { color: var(--warn); border-color: var(--warn); }
+.hint { margin: -6px 0 12px; color: var(--muted); font-size: 0.9rem; }
+.toast { background: var(--card); border: 1px solid var(--accent); border-radius: 8px; padding: 8px 12px; margin: 0 0 12px; font-size: 0.9rem; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.outfit-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
+.chips.filter .sort { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 0.9rem; }
+.item-actions { flex-wrap: wrap; }
+.item-actions .btn.small { padding: 4px 8px; white-space: nowrap; }
+
+/* 画像から色を抽出 */
+.image-color .import-row { flex-wrap: wrap; }
+.palette-result { display: flex; gap: 12px; align-items: flex-start; margin-top: 10px; }
+.palette-preview { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); flex: 0 0 auto; }
+.palette-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; flex: 1; min-width: 0; }
+.palette-list li { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; flex-wrap: wrap; }
+.palette-name code { font-size: 0.8rem; color: var(--muted); }
+.palette-note { margin: 8px 0 0; }
+.palette-help { margin: 6px 0 0; font-size: 0.8rem; }

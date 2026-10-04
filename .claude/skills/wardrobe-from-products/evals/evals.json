@@ -1,0 +1,83 @@
+{
+  "skill_name": "wardrobe-from-products",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "ユニクロでこのパーカを買いました。 https://www.uniqlo.com/jp/ja/products/E486119-000/00?colorDisplayCode=08  コーデ提案アプリ (このリポジトリの Coordination) に取り込める服データの JSON にしてください。",
+      "expected_output": "アプリに取り込める服データ JSON ファイルと、属性の根拠・取り込み手順の説明",
+      "files": [],
+      "assertions": [
+        {
+          "text": "出力に JSON ファイルがあり、アプリの parseImportDetailed で警告なしに解析できる"
+        },
+        {
+          "text": "category が tops、warmth が 3、formality が casual になっている"
+        },
+        {
+          "text": "color が URL の色コード 08 (DARK GRAY) に対応するダークグレー系 (#3a3a3a〜#5a5a5a 付近) で、他の色違いを出力していない"
+        },
+        {
+          "text": "brand が「ユニクロ」で、id が uniqlo-486119-08 のような再現可能な形になっている"
+        },
+        {
+          "text": "imageUrl に色 08 の商品画像 URL が入っている"
+        },
+        {
+          "text": "ユーザーに追加質問せずに完了している (色は URL で指定済み)"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "今月買った服をコーデ提案アプリ (このリポジトリの Coordination) 用のデータにしてほしい。Gist に貼る予定。\n- 無印良品 洗いざらしオックスボタンダウンシャツ 白 綿100%\n- GU タックワイドパンツ ベージュ\n- ZARA のウールブレンドのチェスターコート キャメル\n- ニューバランスの 574 グレー",
+      "expected_output": "アプリに取り込める服データ JSON ファイルと、属性の根拠・取り込み手順の説明",
+      "files": [],
+      "assertions": [
+        {
+          "text": "4 件の要素を持つ JSON が出力され、アプリの parseImportDetailed で解析できる"
+        },
+        {
+          "text": "カテゴリが順に tops / bottoms / outer / shoes になっている"
+        },
+        {
+          "text": "チェスターコートの warmth が 4 以上で seasons に autumn と winter を含み、formality が smart"
+        },
+        {
+          "text": "GU のパンツは API で実在商品を特定し、ベージュの hex と商品画像 URL と id (gu-360654-32 など) が入っている"
+        },
+        {
+          "text": "brand が 無印良品 / GU / ZARA / New Balance と正式表記に揃っている"
+        },
+        {
+          "text": "推定で埋めた項目 (素材不明の warmth など) があれば、ユーザーへの報告にその旨が書かれている"
+        },
+        {
+          "text": "Gist に貼ってアプリでインポートする手順が簡潔に案内されている"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "https://www.gallipoli.jp/product-detail/?pcode=550675\n\nここのも試してみて。",
+      "expected_output": "商品ページを取得して GALLIPOLI のウォッシュドリネンシャツ (麻100%, 長袖, tops, warmth 1, 春夏秋, smart) の JSON を作り、色展開を提示してどの色を持っているかだけ確認する",
+      "files": [],
+      "assertions": [
+        {
+          "text": "fetch-page.mjs などで商品ページを取得し、ユーザーに貼り付けを求めていない"
+        },
+        {
+          "text": "brand が GALLIPOLI、category が tops、warmth が 1、seasons が spring/summer/autumn、formality が smart"
+        },
+        {
+          "text": "色展開 (ホワイト・ネイビー・ブラック・ボルドー…) を提示し、どの色を持っているかを 1 回だけ確認している"
+        },
+        {
+          "text": "id が gallipoli-550675-<色コード> の形で、imageUrl に色別画像 (550675s101.jpg など) が入っている"
+        },
+        {
+          "text": "validate.ts を通して警告なし"
+        }
+      ]
+    }
+  ]
+}
