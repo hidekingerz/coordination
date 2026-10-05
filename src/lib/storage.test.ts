@@ -138,3 +138,16 @@ describe('parseImport sleeve handling', () => {
     expect(parseImport(JSON.stringify([{ ...base, category: 'bottoms', sleeve: 'long' }]))[0].sleeve).toBeUndefined();
   });
 });
+
+describe('parseImport accessory kind handling', () => {
+  it('keeps a valid kind and accepts japanese labels', () => {
+    expect(parseImport(JSON.stringify([{ ...base, category: 'accessory', accessoryKind: 'belt' }]))[0].accessoryKind).toBe('belt');
+    expect(parseImport(JSON.stringify([{ name: 'a', category: '小物', 種類: '帽子' }]))[0].accessoryKind).toBe('hat');
+    expect(parseImport(JSON.stringify([{ name: 'a', category: 'accessory', accessoryKind: 'マフラー' }]))[0].accessoryKind).toBe('neck');
+  });
+
+  it('drops unknown values and ignores the kind on other categories', () => {
+    expect(parseImport(JSON.stringify([{ ...base, category: 'accessory', accessoryKind: 'ring' }]))[0].accessoryKind).toBeUndefined();
+    expect(parseImport(JSON.stringify([{ ...base, category: 'tops', accessoryKind: 'belt' }]))[0].accessoryKind).toBeUndefined();
+  });
+});

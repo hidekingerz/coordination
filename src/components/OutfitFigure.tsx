@@ -52,6 +52,53 @@ function sleeves(variant: FigurePart['variant'], fill: string): ReactNode {
   );
 }
 
+/** 小物。種類ごとに描く位置が違う */
+function accessory(variant: FigurePart['variant'], fill: string, accent?: string): ReactNode {
+  switch (variant) {
+    case 'belt':
+      // 腰の位置の横帯とバックル
+      return (
+        <>
+          <rect x="39" y="101" width="42" height="6" rx="2" fill={fill} />
+          <rect x="57" y="100" width="6" height="8" rx="1" fill={accent ?? '#c9b27c'} />
+        </>
+      );
+    case 'hat':
+      // 頭にかぶるキャップ (クラウンとつば)
+      return (
+        <>
+          <path d="M47,16 A13,13 0 0 1 73,16 V20 H47 Z" fill={fill} />
+          <rect x="60" y="18" width="20" height="4" rx="2" fill={accent ?? fill} />
+        </>
+      );
+    case 'bag':
+      // 体の脇に下げた小さなバッグと持ち手
+      return (
+        <>
+          <path d="M94,70 Q100,62 106,70" stroke={accent ?? fill} strokeWidth="2" fill="none" />
+          <rect x="92" y="70" width="18" height="22" rx="3" fill={fill} />
+        </>
+      );
+    case 'necklace':
+      // 首元の細いチェーンとトップ
+      return (
+        <>
+          <path d="M51,40 Q60,56 69,40" stroke={fill} strokeWidth="1.5" fill="none" />
+          <circle cx="60" cy="55" r="2.5" fill={accent ?? fill} />
+        </>
+      );
+    default:
+      // マフラー / ストール: 首に巻いて片側に垂らす
+      return (
+        <>
+          <rect x="47" y="33" width="26" height="10" rx="5" fill={fill} />
+          <rect x="50" y="40" width="8" height="24" rx="3" fill={fill} />
+          {accent && <rect x="50" y="52" width="8" height="4" fill={accent} />}
+        </>
+      );
+  }
+}
+
 function shapeOf(p: FigurePart): ReactNode {
   const fill = p.color;
   const accent = p.accent;
@@ -118,12 +165,6 @@ function shapeOf(p: FigurePart): ReactNode {
       );
     }
     case 'accessory':
-      return (
-        <>
-          <rect x="47" y="33" width="26" height="10" rx="5" fill={fill} />
-          <rect x="50" y="40" width="8" height="24" rx="3" fill={fill} />
-          {accent && <rect x="50" y="52" width="8" height="4" fill={accent} />}
-        </>
-      );
+      return accessory(p.variant, fill, accent);
   }
 }

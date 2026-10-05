@@ -108,3 +108,17 @@ describe('ItemForm sleeve', () => {
     expect(screen.queryByLabelText('袖丈')).toBeNull();
   });
 });
+
+describe('ItemForm accessory kind', () => {
+  it('shows the kind field only for accessories and submits the choice', () => {
+    const { onSubmit } = renderForm();
+    expect(screen.queryByLabelText('種類')).toBeNull();
+    fireEvent.change(nameInput(), { target: { value: 'ベルト' } });
+    fireEvent.change(categorySelect(), { target: { value: 'accessory' } });
+    const kind = screen.getByLabelText('種類') as HTMLSelectElement;
+    expect(kind.value).toBe('');
+    fireEvent.change(kind, { target: { value: 'belt' } });
+    submit();
+    expect(onSubmit.mock.calls[0][0]).toMatchObject({ category: 'accessory', accessoryKind: 'belt' });
+  });
+});

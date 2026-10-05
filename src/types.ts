@@ -6,6 +6,8 @@ export type Warmth = 1 | 2 | 3 | 4 | 5;
 export type BottomsShape = 'pants' | 'shorts' | 'skirt';
 /** トップス・ワンピースの袖丈。イラストの描き分けに使う */
 export type Sleeve = 'short' | 'long' | 'sleeveless';
+/** 小物の種類。イラストで描く位置と形に使う */
+export type AccessoryKind = 'neck' | 'belt' | 'hat' | 'bag' | 'necklace';
 
 export interface ClothingItem {
   id: string;
@@ -17,6 +19,8 @@ export interface ClothingItem {
   shape?: BottomsShape;
   /** 袖丈。未設定なら名前と厚さから推定する */
   sleeve?: Sleeve;
+  /** 小物の種類。未設定なら名前から推定し、判定できなければイラストには描かない */
+  accessoryKind?: AccessoryKind;
   /** 主色 (#rrggbb) */
   color: string;
   /** 副色 (#rrggbb)。柄物などで任意 */
@@ -75,6 +79,16 @@ export const SLEEVE_LABEL: Record<Sleeve, string> = {
 };
 
 export const ALL_SLEEVES: Sleeve[] = ['short', 'long', 'sleeveless'];
+
+export const ACCESSORY_KIND_LABEL: Record<AccessoryKind, string> = {
+  neck: 'マフラー / ストール',
+  belt: 'ベルト',
+  hat: '帽子',
+  bag: 'バッグ',
+  necklace: 'ネックレス',
+};
+
+export const ALL_ACCESSORY_KINDS: AccessoryKind[] = ['neck', 'belt', 'hat', 'bag', 'necklace'];
 
 export const ALL_CATEGORIES: Category[] = ['outer', 'tops', 'bottoms', 'onepiece', 'shoes', 'accessory'];
 export const ALL_SEASONS: Season[] = ['spring', 'summer', 'autumn', 'winter'];
