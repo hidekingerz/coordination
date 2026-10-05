@@ -58,3 +58,21 @@ describe('OutfitFigure bottoms variants', () => {
     expect(new Set([pants, shorts, skirt].map(shapeOnly)).size).toBe(3);
   });
 });
+
+describe('OutfitFigure sleeve variants', () => {
+  it('renders distinct shapes for short, long and sleeveless tops', () => {
+    const shapeOnly = (html: string) => html.replace(/data-part="[^"]*"/g, '');
+    const short = render([{ ...base, kind: 'tops', variant: 'short', color: '#111111' }]);
+    const long = render([{ ...base, kind: 'tops', variant: 'long', color: '#111111' }]);
+    const none = render([{ ...base, kind: 'tops', variant: 'sleeveless', color: '#111111' }]);
+    expect(new Set([short, long, none].map(shapeOnly)).size).toBe(3);
+    expect(none).toContain('data-part="tops:sleeveless"');
+  });
+
+  it('renders long-sleeved onepiece differently from the short-sleeved one', () => {
+    const shapeOnly = (html: string) => html.replace(/data-part="[^"]*"/g, '');
+    const short = render([{ ...base, kind: 'onepiece', variant: 'short', color: '#111111' }]);
+    const long = render([{ ...base, kind: 'onepiece', variant: 'long', color: '#111111' }]);
+    expect(shapeOnly(short)).not.toBe(shapeOnly(long));
+  });
+});

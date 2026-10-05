@@ -40,6 +40,18 @@ export function OutfitFigure({ parts, width = 120 }: Props) {
   );
 }
 
+/** 袖。長袖は手首まで、半袖は二の腕まで、袖なしは描かない */
+function sleeves(variant: FigurePart['variant'], fill: string): ReactNode {
+  if (variant === 'sleeveless') return null;
+  const length = variant === 'short' ? 28 : 64;
+  return (
+    <>
+      <rect x="26" y="42" width="12" height={length} rx="5" fill={fill} />
+      <rect x="82" y="42" width="12" height={length} rx="5" fill={fill} />
+    </>
+  );
+}
+
 function shapeOf(p: FigurePart): ReactNode {
   const fill = p.color;
   const accent = p.accent;
@@ -74,22 +86,18 @@ function shapeOf(p: FigurePart): ReactNode {
         </>
       );
     }
-    case 'tops': {
-      const sleeve = p.variant === 'short' ? 28 : 64;
+    case 'tops':
       return (
         <>
-          <rect x="26" y="42" width="12" height={sleeve} rx="5" fill={fill} />
-          <rect x="82" y="42" width="12" height={sleeve} rx="5" fill={fill} />
+          {sleeves(p.variant, fill)}
           <rect x="38" y="40" width="44" height="66" rx="4" fill={fill} />
           {accent && <path d="M50,40 L60,50 L70,40 Z" fill={accent} />}
         </>
       );
-    }
     case 'onepiece':
       return (
         <>
-          <rect x="26" y="42" width="12" height="28" rx="5" fill={fill} />
-          <rect x="82" y="42" width="12" height="28" rx="5" fill={fill} />
+          {sleeves(p.variant, fill)}
           <path d="M38,40 H82 V88 L96,166 H24 L38,88 Z" fill={fill} />
           {accent && <rect x="38" y="86" width="44" height="5" fill={accent} />}
         </>

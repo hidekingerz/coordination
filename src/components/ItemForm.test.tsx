@@ -87,3 +87,24 @@ describe('ItemForm submission', () => {
     expect(onSubmit.mock.calls[0][0]).toMatchObject({ id: 'keep-me', name: '新名', createdAt: '2026-01-01T00:00:00.000Z' });
   });
 });
+
+describe('ItemForm sleeve', () => {
+  it('shows the sleeve field for tops, defaults to auto, and submits an explicit choice', () => {
+    const { onSubmit } = renderForm();
+    const sleeve = screen.getByLabelText('袖丈') as HTMLSelectElement;
+    expect(sleeve.value).toBe('');
+    fireEvent.change(nameInput(), { target: { value: 'シャツ' } });
+    submit();
+    expect(onSubmit.mock.calls[0][0].sleeve).toBeUndefined();
+
+    fireEvent.change(sleeve, { target: { value: 'short' } });
+    submit();
+    expect(onSubmit.mock.calls[1][0].sleeve).toBe('short');
+  });
+
+  it('hides the sleeve field for bottoms and shoes', () => {
+    renderForm();
+    fireEvent.change(categorySelect(), { target: { value: 'shoes' } });
+    expect(screen.queryByLabelText('袖丈')).toBeNull();
+  });
+});

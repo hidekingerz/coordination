@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
-import type { BottomsShape, Category, ClothingItem, Formality, Season, Warmth } from '../types';
+import type { BottomsShape, Category, ClothingItem, Formality, Season, Sleeve, Warmth } from '../types';
 import {
   ALL_BOTTOMS_SHAPES,
   ALL_CATEGORIES,
   ALL_FORMALITIES,
   ALL_SEASONS,
+  ALL_SLEEVES,
   BOTTOMS_SHAPE_LABEL,
   CATEGORY_LABEL,
   FORMALITY_LABEL,
   SEASON_LABEL,
+  SLEEVE_LABEL,
   WARMTH_LABEL,
 } from '../types';
 import { colorLabel, normalizeHex } from '../lib/color';
@@ -44,6 +46,8 @@ export function ItemForm({ initial, wardrobe = [], onSubmit, onCancel }: Props) 
   const [brand, setBrand] = useState(initial?.brand ?? '');
   const [category, setCategory] = useState<Category>(initial?.category ?? 'tops');
   const [shape, setShape] = useState<BottomsShape>(initial?.shape ?? 'pants');
+  /** '' は自動 (名前と厚さから推定) */
+  const [sleeve, setSleeve] = useState<Sleeve | ''>(initial?.sleeve ?? '');
   const [color, setColor] = useState(initial?.color ?? '#f5f5f0');
   const [hasSub, setHasSub] = useState(Boolean(initial?.subColor));
   const [subColor, setSubColor] = useState(initial?.subColor ?? '#1f2a44');
@@ -73,6 +77,7 @@ export function ItemForm({ initial, wardrobe = [], onSubmit, onCancel }: Props) 
       brand: normalizeBrand(brand),
       category,
       shape: category === 'bottoms' ? shape : undefined,
+      sleeve: (category === 'tops' || category === 'onepiece') && sleeve ? sleeve : undefined,
       color: hex,
       subColor: sub ?? undefined,
       seasons: ALL_SEASONS.filter((s) => seasons.includes(s)),
@@ -118,6 +123,20 @@ export function ItemForm({ initial, wardrobe = [], onSubmit, onCancel }: Props) 
           ))}
         </select>
       </label>
+
+      {(category === 'tops' || category === 'onepiece') && (
+        <label>
+          袖丈
+          <select value={sleeve} onChange={(e) => setSleeve(e.target.value as Sleeve | '')}>
+            <option value="">自動 (名前から判断)</option>
+            {ALL_SLEEVES.map((sl) => (
+              <option key={sl} value={sl}>
+                {SLEEVE_LABEL[sl]}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       {category === 'bottoms' && (
         <label>
