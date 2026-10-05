@@ -76,3 +76,13 @@ describe('OutfitFigure sleeve variants', () => {
     expect(shapeOnly(short)).not.toBe(shapeOnly(long));
   });
 });
+
+describe('OutfitFigure accessory kinds', () => {
+  it('renders a distinct shape for each accessory kind', () => {
+    const shapeOnly = (html: string) => html.replace(/data-part="[^"]*"/g, '');
+    const kinds = ['neck', 'belt', 'hat', 'bag', 'necklace'] as const;
+    const htmls = kinds.map((k) => render([{ ...base, kind: 'accessory', variant: k, color: '#111111' }]));
+    expect(new Set(htmls.map(shapeOnly)).size).toBe(kinds.length);
+    kinds.forEach((k, i) => expect(htmls[i]).toContain(`data-part="accessory:${k}"`));
+  });
+});

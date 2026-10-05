@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ClothingItem } from '../types';
-import { buildFigure, inferSleeve } from './figure';
+import { buildFigure, inferAccessoryKind, inferSleeve } from './figure';
 
 function item(partial: Partial<ClothingItem> & Pick<ClothingItem, 'id' | 'category'>): ClothingItem {
   return {
@@ -18,7 +18,7 @@ function item(partial: Partial<ClothingItem> & Pick<ClothingItem, 'id' | 'catego
 describe('buildFigure', () => {
   it('layers parts from the back (shoes) to the front (accessory) regardless of input order', () => {
     const parts = buildFigure([
-      item({ id: 'acc', category: 'accessory' }),
+      item({ id: 'acc', name: 'グレーのマフラー', category: 'accessory' }),
       item({ id: 'out', category: 'outer' }),
       item({ id: 'top', category: 'tops' }),
       item({ id: 'sho', category: 'shoes' }),
@@ -58,11 +58,10 @@ describe('buildFigure', () => {
     expect(jacket[0].variant).toBe('regular');
   });
 
-  it('draws bottoms, shoes and accessory in their regular shape', () => {
+  it('draws bottoms and shoes in their regular shape', () => {
     const parts = buildFigure([
       item({ id: 'b', category: 'bottoms', warmth: 1 }),
       item({ id: 's', category: 'shoes', warmth: 5 }),
-      item({ id: 'a', category: 'accessory', warmth: 1 }),
     ]);
     expect(parts.every((p) => p.variant === 'regular')).toBe(true);
   });
@@ -121,5 +120,51 @@ describe('sleeve length', () => {
     expect(buildFigure([item({ id: 'o', name: 'ノースリーブワンピース', category: 'onepiece' })])[0].variant).toBe('sleeveless');
     expect(buildFigure([item({ id: 'o2', name: 'ニットワンピース', category: 'onepiece', warmth: 4 })])[0].variant).toBe('long');
     expect(buildFigure([item({ id: 'b', category: 'bottoms', sleeve: 'long' })])[0].variant).toBe('regular');
+  });
+});
+
+describe('accessory kind', () => {
+  const acc = (name: string, p: Partial<ClothingItem> = {}) => item({ id: name, name, category: 'accessory', ...p });
+
+  it('uses an explicit kind first', () => {
+    expect(inferAccessoryKind(acc('マフラー', { accessoryKind: 'belt' }))).toBe('belt');
+  });
+
+  it('infers the kind from the name', () => {
+    expect(inferAccessoryKind(acc('ブラウンのレザーベルト'))).toBe('belt');
+    expect(inferAccessoryKind(acc('グレーのマフラー'))).toBe('neck');
+    expect(inferAccessoryKind(acc('テラコッタのストール'))).toBe('neck');
+    expect(inferAccessoryKind(acc('シルクのスカーフ'))).toBe('neck');
+    expect(inferAccessoryKind(acc('ブラックのキャップ'))).toBe('hat');
+    expect(inferAccessoryKind(acc('ニット帽'))).toBe('hat');
+    expect(inferAccessoryKind(acc('黒のトートバッグ'))).toBe('bag');
+    expect(inferAccessoryKind(acc('リュック'))).toBe('bag');
+    expect(inferAccessoryKind(acc('シルバーのネックレス'))).toBe('necklace');
+  });
+
+  it('returns undefined when the name gives no hint', () => {
+    expect(inferAccessoryKind(acc('お気に入りの小物'))).toBeUndefined();
+  });
+
+  it('draws accessories with their kind as variant and skips unknown ones', () => {
+    const parts = buildFigure([acc('ブラウンのレザーベルト'), acc('なぞの小物'), acc('キャップ')]);
+    expect(parts.map((p) => `${p.kind}:${p.variant}`)).toEqual(['accessory:belt', 'accessory:hat']);
+  });
+});
+
+describe('belt layering', () => {
+  it('draws a belt under the outerwear but over tops and bottoms', () => {
+    const parts = buildFigure([
+      item({ id: 'out', category: 'outer' }),
+      item({ id: 'belt', name: 'ベルト', category: 'accessory' }),
+      item({ id: 'top', category: 'tops' }),
+      item({ id: 'bot', category: 'bottoms' }),
+    ]);
+    expect(parts.map((p) => p.itemId)).toEqual(['bot', 'top', 'belt', 'out']);
+  });
+
+  it('still draws other accessories in front of everything', () => {
+    const parts = buildFigure([item({ id: 'out', category: 'outer' }), item({ id: 'm', name: 'マフラー', category: 'accessory' })]);
+    expect(parts.map((p) => p.itemId)).toEqual(['out', 'm']);
   });
 });

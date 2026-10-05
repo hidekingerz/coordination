@@ -1,5 +1,5 @@
-import type { BottomsShape, Category, ClothingItem, Formality, Season, Sleeve, Warmth } from '../types';
-import { ALL_BOTTOMS_SHAPES, ALL_SEASONS, ALL_SLEEVES } from '../types';
+import type { AccessoryKind, BottomsShape, Category, ClothingItem, Formality, Season, Sleeve, Warmth } from '../types';
+import { ALL_ACCESSORY_KINDS, ALL_BOTTOMS_SHAPES, ALL_SEASONS, ALL_SLEEVES } from '../types';
 import { normalizeBrand } from './brand';
 import { normalizeHex } from './color';
 import { isEntry, type WearLog } from './wear';
@@ -234,13 +234,14 @@ export function coerceItem(raw: unknown, index = 0): { item: ClothingItem; warni
 
   const shape = category === 'bottoms' ? parseBottomsShape(o.shape ?? o.形) : undefined;
   const sleeve = category === 'tops' || category === 'onepiece' ? parseSleeve(o.sleeve ?? o.袖丈 ?? o.袖) : undefined;
+  const accessoryKind = category === 'accessory' ? parseAccessoryKind(o.accessoryKind ?? o.種類) : undefined;
 
   const id = typeof o.id === 'string' && o.id.trim() ? o.id.trim() : stableId([category, name, brand]);
   const imageUrl = typeof o.imageUrl === 'string' && o.imageUrl.trim() ? o.imageUrl.trim() : undefined;
   const createdAt = typeof o.createdAt === 'string' ? o.createdAt : new Date().toISOString();
 
   return {
-    item: { id, name, brand, category, shape, sleeve, color, subColor, seasons, warmth, formality, tags: parseTags(o.tags ?? o.タグ), imageUrl, createdAt },
+    item: { id, name, brand, category, shape, sleeve, accessoryKind, color, subColor, seasons, warmth, formality, tags: parseTags(o.tags ?? o.タグ), imageUrl, createdAt },
     warnings,
   };
 }
@@ -281,6 +282,30 @@ export function parseSleeve(raw: unknown): Sleeve | undefined {
   return SLEEVE_ALIASES[raw.trim().toLowerCase()] ?? SLEEVE_ALIASES[raw.trim()];
 }
 
+const ACCESSORY_KIND_ALIASES: Record<string, AccessoryKind> = {
+  neck: 'neck',
+  マフラー: 'neck',
+  ストール: 'neck',
+  スカーフ: 'neck',
+  belt: 'belt',
+  ベルト: 'belt',
+  hat: 'hat',
+  帽子: 'hat',
+  キャップ: 'hat',
+  ハット: 'hat',
+  bag: 'bag',
+  バッグ: 'bag',
+  リュック: 'bag',
+  necklace: 'necklace',
+  ネックレス: 'necklace',
+};
+
+/** 小物の種類。英語の値と日本語ラベルを受け付け、解釈できなければ未設定 */
+export function parseAccessoryKind(raw: unknown): AccessoryKind | undefined {
+  if (typeof raw !== 'string') return undefined;
+  return ACCESSORY_KIND_ALIASES[raw.trim().toLowerCase()] ?? ACCESSORY_KIND_ALIASES[raw.trim()];
+}
+
 export type MergeMode = 'merge' | 'replace';
 
 /** 取り込んだアイテムを既存のクローゼットに反映する */
@@ -296,7 +321,8 @@ function sanitize(item: ClothingItem): ClothingItem {
   const brand = typeof item.brand === 'string' ? normalizeBrand(item.brand) : undefined;
   const shape = ALL_BOTTOMS_SHAPES.includes(item.shape as BottomsShape) ? item.shape : undefined;
   const sleeve = ALL_SLEEVES.includes(item.sleeve as Sleeve) ? item.sleeve : undefined;
-  return { ...item, brand, shape, sleeve };
+  const accessoryKind = ALL_ACCESSORY_KINDS.includes(item.accessoryKind as AccessoryKind) ? item.accessoryKind : undefined;
+  return { ...item, brand, shape, sleeve, accessoryKind };
 }
 
 function isItem(x: unknown): x is ClothingItem {

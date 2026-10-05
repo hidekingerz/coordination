@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import type { BottomsShape, Category, ClothingItem, Formality, Season, Sleeve, Warmth } from '../types';
+import type { AccessoryKind, BottomsShape, Category, ClothingItem, Formality, Season, Sleeve, Warmth } from '../types';
 import {
+  ACCESSORY_KIND_LABEL,
+  ALL_ACCESSORY_KINDS,
   ALL_BOTTOMS_SHAPES,
   ALL_CATEGORIES,
   ALL_FORMALITIES,
@@ -48,6 +50,8 @@ export function ItemForm({ initial, wardrobe = [], onSubmit, onCancel }: Props) 
   const [shape, setShape] = useState<BottomsShape>(initial?.shape ?? 'pants');
   /** '' は自動 (名前と厚さから推定) */
   const [sleeve, setSleeve] = useState<Sleeve | ''>(initial?.sleeve ?? '');
+  /** '' は自動 (名前から推定) */
+  const [accessoryKind, setAccessoryKind] = useState<AccessoryKind | ''>(initial?.accessoryKind ?? '');
   const [color, setColor] = useState(initial?.color ?? '#f5f5f0');
   const [hasSub, setHasSub] = useState(Boolean(initial?.subColor));
   const [subColor, setSubColor] = useState(initial?.subColor ?? '#1f2a44');
@@ -78,6 +82,7 @@ export function ItemForm({ initial, wardrobe = [], onSubmit, onCancel }: Props) 
       category,
       shape: category === 'bottoms' ? shape : undefined,
       sleeve: (category === 'tops' || category === 'onepiece') && sleeve ? sleeve : undefined,
+      accessoryKind: category === 'accessory' && accessoryKind ? accessoryKind : undefined,
       color: hex,
       subColor: sub ?? undefined,
       seasons: ALL_SEASONS.filter((s) => seasons.includes(s)),
@@ -132,6 +137,20 @@ export function ItemForm({ initial, wardrobe = [], onSubmit, onCancel }: Props) 
             {ALL_SLEEVES.map((sl) => (
               <option key={sl} value={sl}>
                 {SLEEVE_LABEL[sl]}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {category === 'accessory' && (
+        <label>
+          種類
+          <select value={accessoryKind} onChange={(e) => setAccessoryKind(e.target.value as AccessoryKind | '')}>
+            <option value="">自動 (名前から判断)</option>
+            {ALL_ACCESSORY_KINDS.map((k) => (
+              <option key={k} value={k}>
+                {ACCESSORY_KIND_LABEL[k]}
               </option>
             ))}
           </select>
