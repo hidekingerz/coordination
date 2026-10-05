@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ClothingItem } from '../types';
-import { buildFigure } from './figure';
+import { buildFigure, inferSleeve } from './figure';
 
 function item(partial: Partial<ClothingItem> & Pick<ClothingItem, 'id' | 'category'>): ClothingItem {
   return {
@@ -58,10 +58,9 @@ describe('buildFigure', () => {
     expect(jacket[0].variant).toBe('regular');
   });
 
-  it('draws bottoms, onepiece, shoes and accessory in their regular shape', () => {
+  it('draws bottoms, shoes and accessory in their regular shape', () => {
     const parts = buildFigure([
       item({ id: 'b', category: 'bottoms', warmth: 1 }),
-      item({ id: 'o', category: 'onepiece', warmth: 5 }),
       item({ id: 's', category: 'shoes', warmth: 5 }),
       item({ id: 'a', category: 'accessory', warmth: 1 }),
     ]);
@@ -84,5 +83,43 @@ describe('buildFigure bottoms shape', () => {
 
   it('ignores shape on non-bottoms items', () => {
     expect(buildFigure([item({ id: 't', category: 'tops', warmth: 3, shape: 'skirt' })])[0].variant).toBe('long');
+  });
+});
+
+describe('sleeve length', () => {
+  const tops = (name: string, p: Partial<ClothingItem> = {}) => item({ id: name, name, category: 'tops', warmth: 3, ...p });
+
+  it('uses an explicit sleeve setting first', () => {
+    expect(inferSleeve(tops('Tシャツ', { sleeve: 'long' }))).toBe('long');
+    expect(inferSleeve(tops('ニット', { sleeve: 'sleeveless' }))).toBe('sleeveless');
+  });
+
+  it('infers short sleeves and sleeveless from the name', () => {
+    expect(inferSleeve(tops('白の無地Tシャツ'))).toBe('short');
+    expect(inferSleeve(tops('半袖シャツ'))).toBe('short');
+    expect(inferSleeve(tops('黒のタンクトップ'))).toBe('sleeveless');
+    expect(inferSleeve(tops('キャミソール'))).toBe('sleeveless');
+  });
+
+  it('infers long sleeves from the name even when the item is thin', () => {
+    for (const n of ['ライトブルーのオックスフォードシャツ', '白のリネンシャツ', 'マスタードのロンT', '長袖カットソー', 'グレーのパーカー', 'ネイビーのタートルネック', 'ブラウス']) {
+      expect(inferSleeve(tops(n, { warmth: 1 })), n).toBe('long');
+    }
+  });
+
+  it('prefers the explicit short-sleeve keyword over long-sleeve ones', () => {
+    expect(inferSleeve(tops('半袖シャツ'))).toBe('short');
+    expect(inferSleeve(tops('半袖ニット'))).toBe('short');
+  });
+
+  it('falls back to warmth when the name gives no hint', () => {
+    expect(inferSleeve(tops('なにか', { warmth: 2 }))).toBe('short');
+    expect(inferSleeve(tops('なにか', { warmth: 3 }))).toBe('long');
+  });
+
+  it('applies to onepiece as well and ignores sleeve on other categories', () => {
+    expect(buildFigure([item({ id: 'o', name: 'ノースリーブワンピース', category: 'onepiece' })])[0].variant).toBe('sleeveless');
+    expect(buildFigure([item({ id: 'o2', name: 'ニットワンピース', category: 'onepiece', warmth: 4 })])[0].variant).toBe('long');
+    expect(buildFigure([item({ id: 'b', category: 'bottoms', sleeve: 'long' })])[0].variant).toBe('regular');
   });
 });

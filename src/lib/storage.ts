@@ -1,5 +1,5 @@
-import type { BottomsShape, Category, ClothingItem, Formality, Season, Warmth } from '../types';
-import { ALL_BOTTOMS_SHAPES, ALL_SEASONS } from '../types';
+import type { BottomsShape, Category, ClothingItem, Formality, Season, Sleeve, Warmth } from '../types';
+import { ALL_BOTTOMS_SHAPES, ALL_SEASONS, ALL_SLEEVES } from '../types';
 import { normalizeBrand } from './brand';
 import { normalizeHex } from './color';
 import { isEntry, type WearLog } from './wear';
@@ -233,13 +233,14 @@ export function coerceItem(raw: unknown, index = 0): { item: ClothingItem; warni
   }
 
   const shape = category === 'bottoms' ? parseBottomsShape(o.shape ?? o.形) : undefined;
+  const sleeve = category === 'tops' || category === 'onepiece' ? parseSleeve(o.sleeve ?? o.袖丈 ?? o.袖) : undefined;
 
   const id = typeof o.id === 'string' && o.id.trim() ? o.id.trim() : stableId([category, name, brand]);
   const imageUrl = typeof o.imageUrl === 'string' && o.imageUrl.trim() ? o.imageUrl.trim() : undefined;
   const createdAt = typeof o.createdAt === 'string' ? o.createdAt : new Date().toISOString();
 
   return {
-    item: { id, name, brand, category, shape, color, subColor, seasons, warmth, formality, tags: parseTags(o.tags ?? o.タグ), imageUrl, createdAt },
+    item: { id, name, brand, category, shape, sleeve, color, subColor, seasons, warmth, formality, tags: parseTags(o.tags ?? o.タグ), imageUrl, createdAt },
     warnings,
   };
 }
@@ -261,6 +262,25 @@ export function parseBottomsShape(raw: unknown): BottomsShape | undefined {
   return BOTTOMS_SHAPE_ALIASES[raw.trim().toLowerCase()] ?? BOTTOMS_SHAPE_ALIASES[raw.trim()];
 }
 
+const SLEEVE_ALIASES: Record<string, Sleeve> = {
+  short: 'short',
+  半袖: 'short',
+  半そで: 'short',
+  long: 'long',
+  長袖: 'long',
+  長そで: 'long',
+  sleeveless: 'sleeveless',
+  袖なし: 'sleeveless',
+  ノースリーブ: 'sleeveless',
+  タンクトップ: 'sleeveless',
+};
+
+/** 袖丈。英語の値と日本語ラベルを受け付け、解釈できなければ未設定 */
+export function parseSleeve(raw: unknown): Sleeve | undefined {
+  if (typeof raw !== 'string') return undefined;
+  return SLEEVE_ALIASES[raw.trim().toLowerCase()] ?? SLEEVE_ALIASES[raw.trim()];
+}
+
 export type MergeMode = 'merge' | 'replace';
 
 /** 取り込んだアイテムを既存のクローゼットに反映する */
@@ -275,7 +295,8 @@ export function mergeWardrobe(existing: ClothingItem[], incoming: ClothingItem[]
 function sanitize(item: ClothingItem): ClothingItem {
   const brand = typeof item.brand === 'string' ? normalizeBrand(item.brand) : undefined;
   const shape = ALL_BOTTOMS_SHAPES.includes(item.shape as BottomsShape) ? item.shape : undefined;
-  return { ...item, brand, shape };
+  const sleeve = ALL_SLEEVES.includes(item.sleeve as Sleeve) ? item.sleeve : undefined;
+  return { ...item, brand, shape, sleeve };
 }
 
 function isItem(x: unknown): x is ClothingItem {

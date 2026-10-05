@@ -4,6 +4,8 @@ export type Formality = 'casual' | 'smart' | 'formal';
 export type Warmth = 1 | 2 | 3 | 4 | 5;
 /** ボトムスの形。イラストの描き分けに使う */
 export type BottomsShape = 'pants' | 'shorts' | 'skirt';
+/** トップス・ワンピースの袖丈。イラストの描き分けに使う */
+export type Sleeve = 'short' | 'long' | 'sleeveless';
 
 export interface ClothingItem {
   id: string;
@@ -13,6 +15,8 @@ export interface ClothingItem {
   category: Category;
   /** ボトムスの形。未設定はパンツとして扱う */
   shape?: BottomsShape;
+  /** 袖丈。未設定なら名前と厚さから推定する */
+  sleeve?: Sleeve;
   /** 主色 (#rrggbb) */
   color: string;
   /** 副色 (#rrggbb)。柄物などで任意 */
@@ -63,6 +67,14 @@ export const BOTTOMS_SHAPE_LABEL: Record<BottomsShape, string> = {
 };
 
 export const ALL_BOTTOMS_SHAPES: BottomsShape[] = ['pants', 'shorts', 'skirt'];
+
+export const SLEEVE_LABEL: Record<Sleeve, string> = {
+  short: '半袖',
+  long: '長袖',
+  sleeveless: '袖なし',
+};
+
+export const ALL_SLEEVES: Sleeve[] = ['short', 'long', 'sleeveless'];
 
 export const ALL_CATEGORIES: Category[] = ['outer', 'tops', 'bottoms', 'onepiece', 'shoes', 'accessory'];
 export const ALL_SEASONS: Season[] = ['spring', 'summer', 'autumn', 'winter'];

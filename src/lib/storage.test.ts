@@ -125,3 +125,16 @@ describe('parseImport shape handling', () => {
     expect(item.shape).toBeUndefined();
   });
 });
+
+describe('parseImport sleeve handling', () => {
+  it('keeps a valid sleeve value and accepts japanese labels', () => {
+    expect(parseImport(JSON.stringify([{ ...base, sleeve: 'long' }]))[0].sleeve).toBe('long');
+    expect(parseImport(JSON.stringify([{ name: 'a', category: 'トップス', 袖丈: '半袖' }]))[0].sleeve).toBe('short');
+    expect(parseImport(JSON.stringify([{ name: 'a', category: 'tops', sleeve: 'ノースリーブ' }]))[0].sleeve).toBe('sleeveless');
+  });
+
+  it('drops unknown values and ignores sleeve on bottoms', () => {
+    expect(parseImport(JSON.stringify([{ ...base, sleeve: 'medium' }]))[0].sleeve).toBeUndefined();
+    expect(parseImport(JSON.stringify([{ ...base, category: 'bottoms', sleeve: 'long' }]))[0].sleeve).toBeUndefined();
+  });
+});
