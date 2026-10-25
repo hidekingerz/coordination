@@ -29,10 +29,13 @@ description: ブランドの商品情報から、Coordination アプリ（手持
     "warmth": 3,
     "formality": "casual",
     "tags": ["スウェット", "パーカ", "綿100%"],
+    "sleeve": "long",
     "imageUrl": "https://image.uniqlo.com/.../jpgoods_04_486119_3x4.jpg"
   }
 ]
 ```
+
+イラスト用の形 (`shape` / `sleeve` / `accessoryKind`) は任意だが、分かる範囲で出す。
 
 各項目の取りうる値と意味は `references/output-format.md` を見る (短いので最初に一度読む)。
 特に `warmth` (1=真夏 … 5=真冬) と `seasons` は提案のフィルタに直結するので丁寧に決める。
@@ -102,6 +105,9 @@ node .claude/skills/wardrobe-from-products/scripts/fetch-page.mjs <商品ペー�
   同じカテゴリでも「感動パンツ」「スマートアンクルパンツ」のように名前がきれいめを示していれば `smart`。
 - **tags**: 検索に効く語を 2〜5 個。アイテム種別、主素材、機能名 (ヒートテック・エアリズム等)、シルエット。
 - **name**: 「商品名 (色)」。ブランド名は `brand` に入れるので name には含めない。
+- **shape / sleeve / accessoryKind** (任意、イラスト用): ボトムスは `pants` / `shorts` / `skirt`、トップス・ワンピースは
+  `short` / `long` / `sleeveless`、小物は `belt` / `neck` (マフラー・ストール) / `hat` / `bag` / `necklace`。
+  商品名や画像から分かるときだけ出し、分からなければ省略する (アプリが名前から推定する)。
 
 推定で埋めた項目はユーザーに一言伝える (「素材不明だったので warmth=3 にしました」)。黙って埋めない。
 
@@ -134,6 +140,6 @@ npx tsx .claude/skills/wardrobe-from-products/scripts/validate.ts <作成した.
 入力: 「ユニクロの https://www.uniqlo.com/jp/ja/products/E486119-000/00 を買った。色はダークグレー」
 
 1. スクリプトで取得 → name=スウェットフルジップパーカ, class=tops, composition=綿100%, colors に 08 DARK GRAY
-2. category=tops / color=#4a4a4a / warmth=3 (綿スウェット) / seasons=春秋冬 / formality=casual / tags=[スウェット, パーカ, 綿100%]
+2. category=tops / color=#4a4a4a / warmth=3 (綿スウェット) / seasons=春秋冬 / formality=casual / tags=[スウェット, パーカ, 綿100%] / sleeve=long (パーカは長袖)
 3. id=`uniqlo-486119-08`, imageUrl=色 08 の image
 4. validate → 警告なし → `wardrobe-import.json` に保存して JSON と一覧を提示
