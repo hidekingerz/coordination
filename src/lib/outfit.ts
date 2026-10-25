@@ -1,4 +1,4 @@
-import type { ClothingItem, Formality, Warmth } from '../types';
+import type { ClothingItem, Formality } from '../types';
 import { FORMALITY_LABEL, SEASON_LABEL } from '../types';
 import { COLOR_FAMILY_LABEL, evaluatePalette } from './color';
 import type { Conditions } from './season';
@@ -87,20 +87,30 @@ export function outfitWarmth(items: ClothingItem[]): number {
   if (body.length === 0) return outer?.warmth ?? 3;
   const bodyAvg = body.reduce((a, i) => a + i.warmth, 0) / body.length;
   if (!outer) return bodyAvg;
-  // アウターは体感を大きく左右する。アウターの厚さを重視した加重平均
-  return Math.max(bodyAvg, outer.warmth * 0.7 + bodyAvg * 0.3);
+  // アウターは体感を大きく左右する。アウターの厚さを重視した加重平均に、
+  // 重ね着そのものによる体感の上昇 (LAYER_BONUS) を足す。
+  // これが無いと「薄手シャツ+ジャケット」が「厚手シャツ 1 枚」と同じ厚さになり、ジャケットが選ばれない。
+  return Math.min(5, Math.max(bodyAvg, outer.warmth * 0.7 + bodyAvg * 0.3) + LAYER_BONUS);
 }
 
-function warmthScore(items: ClothingItem[], target: Warmth): { score: number; warning?: string } {
+/** アウターを 1 枚重ねることによる体感の上昇 (厚さの単位) */
+const LAYER_BONUS = 0.5;
+/** 朝晩が冷える日に、アウターなしのコーデの厚さスコアに掛ける係数 */
+const CHILL_PENALTY = 0.8;
+
+function warmthScore(items: ClothingItem[], c: Conditions): { score: number; warning?: string } {
+  const target = c.targetWarmth;
   const w = outfitWarmth(items);
   const diff = Math.abs(w - target);
-  const score = Math.max(0, 1 - diff / 3);
+  let score = Math.max(0, 1 - diff / 3);
   let warning: string | undefined;
   if (w - target >= 1.5) warning = '暑く感じるかもしれません';
   else if (target - w >= 1.5) warning = '寒く感じるかもしれません';
   if (target >= 4 && !items.some((i) => i.category === 'outer')) {
     return { score: score * 0.6, warning: 'アウターがないと寒そうです' };
   }
+  // 朝晩が冷える日は、アウターなしを少し不利にして羽織りのあるコーデを優先する
+  if (isChilly(items, c)) score *= CHILL_PENALTY;
   return { score, warning };
 }
 
@@ -113,12 +123,16 @@ const CHILL_MIN = 10;
  * アウターのないコーデで、朝晩が冷えそうなときの注意。
  * 最高気温で厚さを決めているため、最低気温との差が大きい日に羽織りを勧める。
  */
-function chillWarning(items: ClothingItem[], c: Conditions): string | undefined {
-  if (c.temperature === undefined || c.minTemperature === undefined) return undefined;
-  if (items.some((i) => i.category === 'outer')) return undefined;
+function isChilly(items: ClothingItem[], c: Conditions): boolean {
+  if (c.temperature === undefined || c.minTemperature === undefined) return false;
+  if (items.some((i) => i.category === 'outer')) return false;
   const range = c.temperature - c.minTemperature;
-  if (range < CHILL_RANGE && c.minTemperature > CHILL_MIN) return undefined;
-  return `朝晩は冷えそうです (最低 ${Math.round(c.minTemperature)}℃)。羽織りがあると安心です`;
+  return range >= CHILL_RANGE || c.minTemperature <= CHILL_MIN;
+}
+
+function chillWarning(items: ClothingItem[], c: Conditions): string | undefined {
+  if (!isChilly(items, c)) return undefined;
+  return `朝晩は冷えそうです (最低 ${Math.round(c.minTemperature!)}℃)。羽織りがあると安心です`;
 }
 
 function formalityScore(items: ClothingItem[], preferred?: Formality): number {
@@ -144,7 +158,7 @@ export function scoreOutfit(items: ClothingItem[], opts: SuggestOptions): Outfit
   const { conditions } = opts;
   const colors = items.flatMap((i) => (i.subColor ? [i.color, i.subColor] : [i.color]));
   const palette = evaluatePalette(colors);
-  const warmth = warmthScore(items, conditions.targetWarmth);
+  const warmth = warmthScore(items, conditions);
   const formality = formalityScore(items, opts.formality);
   const fits = items.map((i) => seasonFit(i, conditions));
   // 平均と最低値の両方を見る (1点でも季節外れだと違和感が出る)
@@ -281,29 +295,95 @@ export function suggestOutfits(wardrobe: ClothingItem[], opts: SuggestOptions): 
 
   results.sort((a, b) => b.score - a.score);
 
-  // 多様性: 似すぎる提案 (共通アイテムが多い) を避ける
+  return pickDiverse(results, limit, conditions);
+}
+
+/** 上位 limit 件の中で同じトップス / 同じアウターを使ってよい回数 */
+const MAX_SAME_TOP = 2;
+const MAX_SAME_OUTER = 2;
+/** 涼しい日 (目標の厚さ 3 以上) に、上位 limit 件のうちアウター入りを確保する数 */
+const MIN_WITH_OUTER = 2;
+
+const hasOuter = (o: Outfit) => o.items.some((i) => i.category === 'outer');
+const outerKey = (o: Outfit) => o.items.find((i) => i.category === 'outer')?.id ?? '';
+const topKey = (o: Outfit) =>
+  o.items
+    .filter((i) => i.category === 'tops' || i.category === 'onepiece')
+    .map((i) => i.id)
+    .sort()
+    .join('+');
+const baseKey = (o: Outfit) =>
+  o.items
+    .filter((i) => i.category === 'tops' || i.category === 'bottoms' || i.category === 'onepiece')
+    .map((i) => i.id)
+    .sort()
+    .join('+');
+
+/**
+ * スコア順の候補から、似すぎない組み合わせを limit 件選ぶ。
+ * - 同じトップス+ボトムスの組は 1 回、同じトップス / 同じアウターは 2 回まで
+ * - 共通アイテムがほぼ同じ提案は避ける
+ * - 涼しい日はアウター入りを MIN_WITH_OUTER 件確保する (アウター候補があるとき)
+ */
+function pickDiverse(results: Outfit[], limit: number, conditions: Conditions): Outfit[] {
   const chosen: Outfit[] = [];
-  const usedTopBottom = new Map<string, number>();
-  for (const o of results) {
-    if (chosen.length >= limit) break;
-    const key = o.items
-      .filter((i) => i.category === 'tops' || i.category === 'bottoms' || i.category === 'onepiece')
-      .map((i) => i.id)
-      .sort()
-      .join('+');
-    if ((usedTopBottom.get(key) ?? 0) >= 1) continue;
-    const tooSimilar = chosen.some((c) => {
+  const usedBase = new Set<string>();
+  const topCount = new Map<string, number>();
+  const outerCount = new Map<string, number>();
+  const bump = (m: Map<string, number>, k: string, d: number) => m.set(k, (m.get(k) ?? 0) + d);
+  const accept = (o: Outfit) => {
+    chosen.push(o);
+    usedBase.add(baseKey(o));
+    bump(topCount, topKey(o), 1);
+    if (outerKey(o)) bump(outerCount, outerKey(o), 1);
+  };
+  const withinLimits = (o: Outfit) =>
+    (topCount.get(topKey(o)) ?? 0) < MAX_SAME_TOP && (!outerKey(o) || (outerCount.get(outerKey(o)) ?? 0) < MAX_SAME_OUTER);
+  const fits = (o: Outfit, ignoreLimits = false) => {
+    if (chosen.includes(o) || usedBase.has(baseKey(o))) return false;
+    if (!ignoreLimits && !withinLimits(o)) return false;
+    return !chosen.some((c) => {
       const shared = c.items.filter((ci) => o.items.some((oi) => oi.id === ci.id)).length;
       return shared >= Math.min(c.items.length, o.items.length) - 1;
     });
-    if (tooSimilar) continue;
-    chosen.push(o);
-    usedTopBottom.set(key, 1);
-  }
-  // 足りなければ残りから補充
+  };
+
   for (const o of results) {
     if (chosen.length >= limit) break;
-    if (!chosen.includes(o)) chosen.push(o);
+    if (fits(o)) accept(o);
+  }
+
+  // 涼しい日にアウター入りが少なければ、末尾のアウターなしを最良のアウター入りと入れ替える
+  const wantOuter = conditions.targetWarmth >= 3 && results.some(hasOuter);
+  if (wantOuter) {
+    const candidates = results.filter((o) => hasOuter(o) && !chosen.includes(o));
+    while (chosen.filter(hasOuter).length < Math.min(MIN_WITH_OUTER, limit) && candidates.length) {
+      const victimIdx = chosen.map(hasOuter).lastIndexOf(false);
+      if (victimIdx < 0) break;
+      const victim = chosen.splice(victimIdx, 1)[0];
+      usedBase.delete(baseKey(victim));
+      bump(topCount, topKey(victim), -1);
+      const next = candidates.find((o) => fits(o)) ?? candidates.find((o) => fits(o, true));
+      if (!next) {
+        chosen.splice(victimIdx, 0, victim);
+        usedBase.add(baseKey(victim));
+        bump(topCount, topKey(victim), 1);
+        break;
+      }
+      candidates.splice(candidates.indexOf(next), 1);
+      accept(next);
+    }
+    chosen.sort((a, b) => b.score - a.score);
+  }
+
+  // 足りなければ残りから補充 (まずトップス・アウターの偏りを避けつつ、それでも足りなければ何でも)
+  for (const o of results) {
+    if (chosen.length >= limit) break;
+    if (!chosen.includes(o) && !usedBase.has(baseKey(o)) && withinLimits(o)) accept(o);
+  }
+  for (const o of results) {
+    if (chosen.length >= limit) break;
+    if (!chosen.includes(o)) accept(o);
   }
   return chosen;
 }
