@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { DailyTemperature } from '../lib/weather';
 
 // 天気 API は呼ばずに、テストごとに結果を差し替える
@@ -117,5 +117,55 @@ describe('SuggestView current location', () => {
     expect(screen.queryByText(/位置情報を取得中/)).toBeNull();
     expect(screen.getByText('大阪の予報: 最高 20℃ / 最低 12℃')).toBeTruthy();
     expect(JSON.parse(localStorage.getItem('coordination.location.v1') ?? '{}').id).toBe('osaka');
+  });
+});
+
+describe('SuggestView must-include picker', () => {
+  it('lets the user pick several items, shows them as chips, and passes them to the suggestions', async () => {
+    getForecast.mockResolvedValue({ max: 20, min: 12 });
+    const { SAMPLE_WARDROBE } = await import('../data/sample');
+    render(<SuggestView wardrobe={SAMPLE_WARDROBE} wearLog={[]} onWear={() => {}} onUnwear={() => {}} />);
+    await waitFor(() => expect(tempInput().value).toBe('20'));
+
+    expect(screen.queryByRole('combobox', { name: /このアイテムを着たい/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'アイテムを選ぶ' }));
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: /ライトブルーのオックスフォードシャツ/ }));
+    fireEvent.click(within(dialog).getByRole('button', { name: /ブラックのローファー/ }));
+    fireEvent.click(within(dialog).getByRole('button', { name: '決定' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    // 条件欄にチップとして表示される
+    const chips = screen.getAllByTestId('must-chip');
+    expect(chips.map((c) => c.textContent)).toEqual([expect.stringContaining('オックスフォードシャツ'), expect.stringContaining('ローファー')]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'コーデを提案する' }));
+    const outfits = screen.getAllByRole('article');
+    expect(outfits.length).toBeGreaterThan(0);
+    for (const o of outfits) {
+      expect(within(o).getAllByText(/オックスフォードシャツ/).length).toBeGreaterThan(0);
+      expect(within(o).getAllByText(/ブラックのローファー/).length).toBeGreaterThan(0);
+    }
+
+    // チップの × で外せる
+    fireEvent.click(within(chips[1]).getByRole('button', { name: /外す/ }));
+    expect(screen.getAllByTestId('must-chip')).toHaveLength(1);
+  });
+});
+
+describe('SuggestView must-include conflicts', () => {
+  it('explains that the chosen items cannot be worn together instead of the generic empty message', async () => {
+    getForecast.mockResolvedValue({ max: 20, min: 12 });
+    const { SAMPLE_WARDROBE } = await import('../data/sample');
+    render(<SuggestView wardrobe={SAMPLE_WARDROBE} wearLog={[]} onWear={() => {}} onUnwear={() => {}} />);
+    await waitFor(() => expect(tempInput().value).toBe('20'));
+    fireEvent.click(screen.getByRole('button', { name: 'アイテムを選ぶ' }));
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: /白の無地Tシャツ/ }));
+    fireEvent.click(within(dialog).getByRole('button', { name: /ブラックのTシャツ/ }));
+    fireEvent.click(within(dialog).getByRole('button', { name: '決定' }));
+    fireEvent.click(screen.getByRole('button', { name: 'コーデを提案する' }));
+    expect(screen.getByText(/選んだアイテムを同時に着る組み合わせ/)).toBeTruthy();
+    expect(screen.queryByText(/トップスとボトムス（またはワンピース）がそれぞれ1点以上必要/)).toBeNull();
   });
 });
