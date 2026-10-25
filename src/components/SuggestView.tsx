@@ -47,6 +47,18 @@ function parseDate(dateStr: string): Date | null {
 
 export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
   const [dateStr, setDateStr] = useState(() => toDateKey(new Date()));
+  /** 日付の選び方。今日・明日はワンタップ、それ以外はカレンダーで指定 */
+  const [dateMode, setDateMode] = useState<'today' | 'tomorrow' | 'custom'>('today');
+  const shiftedKey = (days: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return toDateKey(d);
+  };
+  const pickDate = (mode: 'today' | 'tomorrow' | 'custom') => {
+    setDateMode(mode);
+    if (mode === 'today') setDateStr(shiftedKey(0));
+    if (mode === 'tomorrow') setDateStr(shiftedKey(1));
+  };
   const [tempStr, setTempStr] = useState('');
   /** 気温欄が予報由来のときだけ、その日の最低気温も条件に入れる */
   const [forecastMin, setForecastMin] = useState<number | undefined>(undefined);
@@ -178,10 +190,34 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
     <section className="suggest">
       <div className="conditions card">
         <div className="cond-row">
-          <label>
+          <div className="cond-field cond-date">
             <span>日付</span>
-            <input type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} />
-          </label>
+            <div className="date-row">
+              <div className="segmented" role="group" aria-label="日付">
+                {(
+                  [
+                    ['today', '今日'],
+                    ['tomorrow', '明日'],
+                    ['custom', '日付を指定'],
+                  ] as const
+                ).map(([mode, label]) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    className={`seg ${dateMode === mode ? 'on' : ''}`}
+                    aria-pressed={dateMode === mode}
+                    onClick={() => pickDate(mode)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {dateMode === 'custom' && (
+                <input type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} aria-label="日付を選択" />
+              )}
+              {dateMode !== 'custom' && <span className="muted">{dateStr.replace(/-/g, '/')}</span>}
+            </div>
+          </div>
           <label>
             <span>
               気温 (℃) <span className="muted">任意</span>

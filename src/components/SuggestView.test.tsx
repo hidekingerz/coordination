@@ -58,6 +58,7 @@ describe('SuggestView forecast', () => {
     getForecast.mockResolvedValue({ max: 20, min: 10 });
     renderView();
     await waitFor(() => expect(tempInput().value).toBe('20'));
+    fireEvent.click(screen.getByRole('button', { name: '日付を指定' }));
     fireEvent.change(dateInput(), { target: { value: '2030-01-01' } });
     await screen.findByText('この日付の予報は取得できません');
     expect(getForecast).toHaveBeenCalledTimes(1);
@@ -77,6 +78,7 @@ describe('SuggestView forecast', () => {
     getForecast.mockResolvedValue({ max: 22, min: 15 });
     renderView();
     await waitFor(() => expect(tempInput().value).toBe('22'));
+    fireEvent.click(screen.getByRole('button', { name: '日付を指定' }));
     fireEvent.change(dateInput(), { target: { value: '2030-01-01' } });
     expect(tempInput().value).toBe('');
   });
@@ -167,5 +169,42 @@ describe('SuggestView must-include conflicts', () => {
     fireEvent.click(screen.getByRole('button', { name: 'コーデを提案する' }));
     expect(screen.getByText(/選んだアイテムを同時に着る組み合わせ/)).toBeTruthy();
     expect(screen.queryByText(/トップスとボトムス（またはワンピース）がそれぞれ1点以上必要/)).toBeNull();
+  });
+});
+
+describe('SuggestView date shortcuts', () => {
+  const key = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  it('defaults to today, switches to tomorrow with the shortcut and refetches the forecast', async () => {
+    getForecast.mockResolvedValue({ max: 20, min: 12 });
+    renderView();
+    await waitFor(() => expect(tempInput().value).toBe('20'));
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    expect(screen.getByRole('button', { name: '今日' }).getAttribute('aria-pressed')).toBe('true');
+    // 既定ではカレンダー入力は隠れている
+    expect(document.querySelector('input[type=date]')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: '明日' }));
+    expect(screen.getByRole('button', { name: '明日' }).getAttribute('aria-pressed')).toBe('true');
+    await waitFor(() => expect(getForecast).toHaveBeenCalledTimes(2));
+    const passed = getForecast.mock.calls[1][0];
+    expect(key(passed)).toBe(key(tomorrow));
+  });
+
+  it('shows the calendar input only when "日付を指定" is chosen, and marks it active for other dates', async () => {
+    getForecast.mockResolvedValue({ max: 20, min: 12 });
+    renderView();
+    await waitFor(() => expect(tempInput().value).toBe('20'));
+    fireEvent.click(screen.getByRole('button', { name: '日付を指定' }));
+    const input = document.querySelector('input[type=date]') as HTMLInputElement;
+    expect(input).toBeTruthy();
+    fireEvent.change(input, { target: { value: '2030-01-01' } });
+    expect(screen.getByRole('button', { name: '日付を指定' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: '今日' }).getAttribute('aria-pressed')).toBe('false');
+    // 今日に戻すとカレンダーは閉じる
+    fireEvent.click(screen.getByRole('button', { name: '今日' }));
+    expect(document.querySelector('input[type=date]')).toBeNull();
   });
 });

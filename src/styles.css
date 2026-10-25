@@ -207,3 +207,11 @@ body {
 .picker-body { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 0.85rem; }
 .picker-body strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .picker-check { width: 20px; color: var(--accent); font-weight: 700; text-align: center; }
+
+/* 日付のショートカット */
+.cond-date { grid-column: 1 / -1; }
+.date-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.segmented { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--bg); }
+.seg { border: none; background: none; color: var(--text); padding: 8px 14px; font-size: 0.95rem; cursor: pointer; white-space: nowrap; }
+.seg + .seg { border-left: 1px solid var(--border); }
+.seg.on { background: var(--accent); color: var(--accent-text); }
