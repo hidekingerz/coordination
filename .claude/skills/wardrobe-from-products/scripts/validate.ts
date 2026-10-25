@@ -7,7 +7,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { parseImportDetailed } from '../../../../src/lib/storage';
-import { CATEGORY_LABEL, FORMALITY_LABEL, SEASON_LABEL } from '../../../../src/types';
+import { ACCESSORY_KIND_LABEL, BOTTOMS_SHAPE_LABEL, CATEGORY_LABEL, FORMALITY_LABEL, SEASON_LABEL, SLEEVE_LABEL } from '../../../../src/types';
 import { colorLabel } from '../../../../src/lib/color';
 
 // head などにパイプしたときの EPIPE で落ちないようにする
@@ -39,11 +39,21 @@ if (asJson) {
 console.log(`OK: ${items.length} 件を解析できました`);
 for (const i of items) {
   const brand = i.brand ? ` [${i.brand}]` : '';
+  // イラスト用の形。省略時はアプリが名前から推定するので「自動」と表示する
+  const figure =
+    i.category === 'bottoms'
+      ? `形=${i.shape ? BOTTOMS_SHAPE_LABEL[i.shape] : '自動'}`
+      : i.category === 'tops' || i.category === 'onepiece'
+        ? `袖丈=${i.sleeve ? SLEEVE_LABEL[i.sleeve] : '自動'}`
+        : i.category === 'accessory'
+          ? `種類=${i.accessoryKind ? ACCESSORY_KIND_LABEL[i.accessoryKind] : '自動'}`
+          : '';
   console.log(
     `- ${CATEGORY_LABEL[i.category]}${brand} ${i.name} | ${colorLabel(i.color)} ${i.color}` +
       (i.subColor ? ` / ${colorLabel(i.subColor)}` : '') +
       ` | ${i.seasons.map((s) => SEASON_LABEL[s]).join('・')} | 厚さ${i.warmth} | ${FORMALITY_LABEL[i.formality]}` +
       (i.tags.length ? ` | #${i.tags.join(' #')}` : '') +
+      (figure ? ` | ${figure}` : '') +
       ` | id=${i.id}`,
   );
 }
