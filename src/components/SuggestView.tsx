@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ClothingItem, Formality } from '../types';
-import { ALL_FORMALITIES, CATEGORY_LABEL, FORMALITY_LABEL, SEASON_LABEL, WARMTH_LABEL } from '../types';
+import { ALL_FORMALITIES, FORMALITY_LABEL, SEASON_LABEL, WARMTH_LABEL } from '../types';
 import { buildConditions } from '../lib/season';
 import { getForecast, isForecastAvailable, toDateKey, type DailyTemperature } from '../lib/weather';
 import {
@@ -16,6 +16,7 @@ import { buildWearStats, daysBetween, statsFor, type WearLog } from '../lib/wear
 import { buildFigure } from '../lib/figure';
 import { OutfitFigure } from './OutfitFigure';
 import { ItemCard } from './ItemCard';
+import { ItemPicker } from './ItemPicker';
 import { Swatch } from './Swatch';
 
 interface Props {
@@ -119,7 +120,9 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
     setLocating({ status: 'idle' });
   };
   const [formality, setFormality] = useState<Formality | ''>('');
-  const [mustInclude, setMustInclude] = useState<string>('');
+  /** 必ず含めたいアイテムの id (複数可) */
+  const [mustInclude, setMustInclude] = useState<string[]>([]);
+  const [picking, setPicking] = useState(false);
   const [freshness, setFreshness] = useState<FreshnessMode>('balanced');
   const [results, setResults] = useState<Outfit[] | null>(null);
   const [worn, setWorn] = useState<{ outfit: Outfit; date: string } | null>(null);
@@ -141,7 +144,7 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
       suggestOutfits(wardrobe, {
         conditions,
         formality: formality || undefined,
-        mustInclude: mustInclude ? [mustInclude] : undefined,
+        mustInclude: mustInclude.length ? mustInclude : undefined,
         limit: 5,
         wearStats: wearLog.length ? wearStats : undefined,
         freshnessWeight: FRESHNESS_PRESETS[freshness],
@@ -168,7 +171,8 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
     setWorn(null);
   };
 
-  const pickable = wardrobe.filter((i) => i.category !== 'accessory');
+  // 削除されたアイテムが残らないよう、クローゼットに存在するものだけ表示する
+  const mustItems = mustInclude.map((id) => wardrobe.find((i) => i.id === id)).filter((i): i is ClothingItem => Boolean(i));
 
   return (
     <section className="suggest">
@@ -230,19 +234,33 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
             </select>
             {wearLog.length === 0 && <span className="forecast muted">「このコーデを着た」で記録すると使えます</span>}
           </label>
-          <label>
+          <div className="cond-field">
             <span>
               このアイテムを着たい <span className="muted">任意</span>
             </span>
-            <select value={mustInclude} onChange={(e) => setMustInclude(e.target.value)}>
-              <option value="">指定なし</option>
-              {pickable.map((i) => (
-                <option key={i.id} value={i.id}>
-                  [{CATEGORY_LABEL[i.category]}] {i.name}
-                </option>
-              ))}
-            </select>
-          </label>
+            <div className="must-row">
+              <button type="button" className="btn" onClick={() => setPicking(true)} disabled={wardrobe.length === 0}>
+                アイテムを選ぶ
+              </button>
+              {mustItems.length === 0 ? (
+                <span className="muted">指定なし</span>
+              ) : (
+                mustItems.map((i) => (
+                  <span key={i.id} className="must-chip" data-testid="must-chip">
+                    <Swatch color={i.color} size={12} /> {i.name}
+                    <button
+                      type="button"
+                      className="must-remove"
+                      aria-label={`${i.name} を外す`}
+                      onClick={() => setMustInclude((prev) => prev.filter((id) => id !== i.id))}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))
+              )}
+            </div>
+          </div>
         </div>
         <div className="cond-summary">
           <span className="pill">季節: {SEASON_LABEL[conditions.season]}</span>
@@ -259,9 +277,13 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
         {wardrobe.length === 0 && <p className="muted">先にクローゼットへアイテムを登録してください。</p>}
       </div>
 
+      {picking && <ItemPicker wardrobe={wardrobe} selected={mustInclude} onChange={setMustInclude} onClose={() => setPicking(false)} />}
+
       {results && results.length === 0 && (
         <p className="empty">
-          組み合わせを作れませんでした。トップスとボトムス（またはワンピース）がそれぞれ1点以上必要です。
+          {mustItems.length > 0
+            ? '選んだアイテムを同時に着る組み合わせが作れませんでした。同じカテゴリを複数選んでいないか確認し、指定を減らしてください。'
+            : '組み合わせを作れませんでした。トップスとボトムス（またはワンピース）がそれぞれ1点以上必要です。'}
         </p>
       )}
 

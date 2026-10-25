@@ -110,7 +110,7 @@ body {
 .form-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
 .conditions .cond-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
-.conditions label { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; }
+.conditions label, .conditions .cond-field { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; }
 .conditions input, .conditions select {
   padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 0.95rem;
 }
@@ -189,3 +189,21 @@ body {
 .palette-name code { font-size: 0.8rem; color: var(--muted); }
 .palette-note { margin: 8px 0 0; }
 .palette-help { margin: 6px 0 0; font-size: 0.8rem; }
+
+/* 「このアイテムを着たい」のチップとピッカー */
+.must-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.must-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 2px 4px 2px 8px; font-size: 0.85rem; }
+.must-remove { border: none; background: none; color: var(--muted); cursor: pointer; font-size: 1rem; line-height: 1; padding: 0 4px; border-radius: 50%; }
+.must-remove:hover { color: var(--danger); }
+.modal.picker { max-width: 720px; display: flex; flex-direction: column; gap: 10px; max-height: calc(100vh - 48px); }
+.picker-head { display: flex; align-items: baseline; justify-content: space-between; }
+.picker-head h3 { margin: 0; }
+.modal.picker .search { width: 100%; }
+.picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; overflow: auto; padding: 2px; }
+.picker-card { display: flex; align-items: center; gap: 8px; text-align: left; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; cursor: pointer; color: var(--text); font: inherit; }
+.picker-card:hover { border-color: var(--accent); }
+.picker-card.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+.picker-card .item-visual { flex: 0 0 40px; height: 40px; }
+.picker-body { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 0.85rem; }
+.picker-body strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-check { width: 20px; color: var(--accent); font-weight: 700; text-align: center; }
