@@ -5,3 +5,4 @@ dist
 
 # 個人のクローゼットデータ (スキルの出力既定ファイル)
 wardrobe-import*.json
+myCloth/
