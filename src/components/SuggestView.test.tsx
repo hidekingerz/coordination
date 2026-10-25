@@ -16,10 +16,24 @@ function renderView() {
   return render(<SuggestView wardrobe={[]} wearLog={[]} onWear={() => {}} onUnwear={() => {}} />);
 }
 
-const tempInput = () => screen.getByPlaceholderText('例: 18') as HTMLInputElement;
+/** 「条件を絞る」が閉じていれば開く (開いていれば何もしない) */
+const ensureMore = () => {
+  const toggle = screen.getByRole('button', { name: /条件を絞る/ });
+  if (toggle.getAttribute('aria-expanded') !== 'true') fireEvent.click(toggle);
+};
+const tempInput = () => {
+  ensureMore();
+  return screen.getByPlaceholderText('例: 18') as HTMLInputElement;
+};
 const dateInput = () => document.querySelector('input[type=date]') as HTMLInputElement;
 // ラベル内に取得中の注記が入ることがあるので部分一致で探す
-const locationSelect = () => screen.getByLabelText(/予報の地点/) as HTMLSelectElement;
+const locationSelect = () => {
+  // ステータス行の地点ボタンを押すと選択肢が出る
+  const existing = screen.queryByLabelText(/予報の地点/) as HTMLSelectElement | null;
+  if (existing) return existing;
+  fireEvent.click(screen.getByRole('button', { name: /地点を変える/ }));
+  return screen.getByLabelText(/予報の地点/) as HTMLSelectElement;
+};
 
 /** 解決タイミングを手で制御できる Promise */
 function deferred<T>() {
@@ -43,14 +57,15 @@ describe('SuggestView forecast', () => {
     getForecast.mockResolvedValue({ max: 23.6, min: 17.2 });
     renderView();
     await waitFor(() => expect(tempInput().value).toBe('24'));
-    expect(screen.getByText('東京の予報: 最高 24℃ / 最低 17℃')).toBeTruthy();
+    expect(screen.getByText(/最高 24℃ \/ 最低 17℃/)).toBeTruthy();
+    expect(screen.getByTestId('cond-status').textContent).toContain('東京');
     expect(getForecast).toHaveBeenCalledTimes(1);
   });
 
   it('shows an error note and leaves the field empty when the fetch fails', async () => {
     getForecast.mockRejectedValue(new Error('offline'));
     renderView();
-    await screen.findByText('予報を取得できませんでした。手入力できます');
+    await screen.findByText(/予報を取得できませんでした/);
     expect(tempInput().value).toBe('');
   });
 
@@ -70,7 +85,9 @@ describe('SuggestView forecast', () => {
     renderView();
     fireEvent.change(tempInput(), { target: { value: '15' } });
     d.resolve({ max: 25, min: 18 });
-    await screen.findByText('東京の予報: 最高 25℃ / 最低 18℃');
+    // 予報が届いても手入力が優先され、ステータスには手入力であることが出る。予報に戻すボタンで戻せる
+    await screen.findByRole('button', { name: '予報に戻す' });
+    expect(screen.getByTestId('cond-status').textContent).toContain('15℃ (手入力)');
     expect(tempInput().value).toBe('15');
   });
 
@@ -88,7 +105,8 @@ describe('SuggestView forecast', () => {
     renderView();
     await waitFor(() => expect(tempInput().value).toBe('20'));
     fireEvent.change(locationSelect(), { target: { value: 'osaka' } });
-    await screen.findByText('大阪の予報: 最高 20℃ / 最低 12℃');
+    await screen.findByText(/最高 20℃ \/ 最低 12℃/);
+    expect(screen.getByTestId('cond-status').textContent).toContain('大阪');
     expect(getForecast).toHaveBeenLastCalledWith(expect.any(Date), expect.objectContaining({ name: '大阪' }));
     expect(JSON.parse(localStorage.getItem('coordination.location.v1') ?? '{}').id).toBe('osaka');
   });
@@ -112,12 +130,13 @@ describe('SuggestView current location', () => {
     expect(locationSelect().disabled).toBe(false);
 
     fireEvent.change(locationSelect(), { target: { value: 'osaka' } });
-    await screen.findByText('大阪の予報: 最高 20℃ / 最低 12℃');
+    await screen.findByText(/最高 20℃ \/ 最低 12℃/);
+    expect(screen.getByTestId('cond-status').textContent).toContain('大阪');
 
     resolveGeo({ coords: { latitude: 1, longitude: 2 } } as GeolocationPosition);
     await new Promise((r) => setTimeout(r, 0));
     expect(screen.queryByText(/位置情報を取得中/)).toBeNull();
-    expect(screen.getByText('大阪の予報: 最高 20℃ / 最低 12℃')).toBeTruthy();
+    expect(screen.getByTestId('cond-status').textContent).toContain('大阪');
     expect(JSON.parse(localStorage.getItem('coordination.location.v1') ?? '{}').id).toBe('osaka');
   });
 });
@@ -130,6 +149,7 @@ describe('SuggestView must-include picker', () => {
     await waitFor(() => expect(tempInput().value).toBe('20'));
 
     expect(screen.queryByRole('combobox', { name: /このアイテムを着たい/ })).toBeNull();
+    ensureMore();
     fireEvent.click(screen.getByRole('button', { name: 'アイテムを選ぶ' }));
     const dialog = screen.getByRole('dialog');
     fireEvent.click(within(dialog).getByRole('button', { name: /ライトブルーのオックスフォードシャツ/ }));
@@ -141,8 +161,7 @@ describe('SuggestView must-include picker', () => {
     const chips = screen.getAllByTestId('must-chip');
     expect(chips.map((c) => c.textContent)).toEqual([expect.stringContaining('オックスフォードシャツ'), expect.stringContaining('ローファー')]);
 
-    fireEvent.click(screen.getByRole('button', { name: 'コーデを提案する' }));
-    const outfits = screen.getAllByRole('article');
+    const outfits = await screen.findAllByRole('article');
     expect(outfits.length).toBeGreaterThan(0);
     for (const o of outfits) {
       expect(within(o).getAllByText(/オックスフォードシャツ/).length).toBeGreaterThan(0);
@@ -161,13 +180,13 @@ describe('SuggestView must-include conflicts', () => {
     const { SAMPLE_WARDROBE } = await import('../data/sample');
     render(<SuggestView wardrobe={SAMPLE_WARDROBE} wearLog={[]} onWear={() => {}} onUnwear={() => {}} />);
     await waitFor(() => expect(tempInput().value).toBe('20'));
+    ensureMore();
     fireEvent.click(screen.getByRole('button', { name: 'アイテムを選ぶ' }));
     const dialog = screen.getByRole('dialog');
     fireEvent.click(within(dialog).getByRole('button', { name: /白の無地Tシャツ/ }));
     fireEvent.click(within(dialog).getByRole('button', { name: /ブラックのTシャツ/ }));
     fireEvent.click(within(dialog).getByRole('button', { name: '決定' }));
-    fireEvent.click(screen.getByRole('button', { name: 'コーデを提案する' }));
-    expect(screen.getByText(/選んだアイテムを同時に着る組み合わせ/)).toBeTruthy();
+    expect(await screen.findByText(/選んだアイテムを同時に着る組み合わせ/)).toBeTruthy();
     expect(screen.queryByText(/トップスとボトムス（またはワンピース）がそれぞれ1点以上必要/)).toBeNull();
   });
 });

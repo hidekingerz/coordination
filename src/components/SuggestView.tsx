@@ -1,23 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ClothingItem, Formality } from '../types';
-import { ALL_FORMALITIES, FORMALITY_LABEL, SEASON_LABEL, WARMTH_LABEL } from '../types';
 import { buildConditions } from '../lib/season';
-import { getForecast, isForecastAvailable, toDateKey, type DailyTemperature } from '../lib/weather';
-import {
-  CURRENT_LOCATION_ID,
-  PRESET_LOCATIONS,
-  detectCurrentLocation,
-  loadLocation,
-  saveLocation,
-  type Location,
-} from '../lib/location';
+import { getForecast, isForecastAvailable, toDateKey } from '../lib/weather';
+import { CURRENT_LOCATION_ID, PRESET_LOCATIONS, detectCurrentLocation, loadLocation, saveLocation, type Location } from '../lib/location';
 import { FRESHNESS_PRESETS, suggestOutfits, type FreshnessMode, type Outfit } from '../lib/outfit';
-import { buildWearStats, daysBetween, statsFor, type WearLog } from '../lib/wear';
-import { buildFigure } from '../lib/figure';
-import { OutfitFigure } from './OutfitFigure';
-import { ItemCard } from './ItemCard';
-import { ItemPicker } from './ItemPicker';
-import { Swatch } from './Swatch';
+import { buildWearStats, daysBetween, type WearLog } from '../lib/wear';
+import { SuggestConditions, type DateMode, type ForecastState, type LocatingState } from './SuggestConditions';
+import { OutfitCard } from './OutfitCard';
 
 interface Props {
   wardrobe: ClothingItem[];
@@ -26,18 +15,9 @@ interface Props {
   onUnwear: (itemIds: string[], date: string) => void;
 }
 
-const FRESHNESS_LABEL: Record<FreshnessMode, string> = {
-  balanced: '最近着た服は控えめに (標準)',
-  prefer: '着ていない服を優先',
-  off: '考慮しない',
-};
-
-type ForecastState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'ok'; data: DailyTemperature }
-  | { status: 'unavailable' }
-  | { status: 'error' };
+const PAGE_SIZE = 5;
+/** 条件が変わってから再計算するまでの待ち時間 (連続操作をまとめる) */
+const RECALC_DELAY_MS = 150;
 
 function parseDate(dateStr: string): Date | null {
   if (!dateStr) return null;
@@ -45,33 +25,42 @@ function parseDate(dateStr: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+function shiftedKey(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return toDateKey(d);
+}
+
 export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
-  const [dateStr, setDateStr] = useState(() => toDateKey(new Date()));
-  /** 日付の選び方。今日・明日はワンタップ、それ以外はカレンダーで指定 */
-  const [dateMode, setDateMode] = useState<'today' | 'tomorrow' | 'custom'>('today');
-  const shiftedKey = (days: number) => {
-    const d = new Date();
-    d.setDate(d.getDate() + days);
-    return toDateKey(d);
-  };
-  const pickDate = (mode: 'today' | 'tomorrow' | 'custom') => {
+  // ---- 日付
+  const [dateStr, setDateStr] = useState(() => shiftedKey(0));
+  const [dateMode, setDateMode] = useState<DateMode>('today');
+  const pickDate = (mode: DateMode) => {
     setDateMode(mode);
     if (mode === 'today') setDateStr(shiftedKey(0));
     if (mode === 'tomorrow') setDateStr(shiftedKey(1));
   };
+
+  // ---- 気温と予報
   const [tempStr, setTempStr] = useState('');
   /** 気温欄が予報由来のときだけ、その日の最低気温も条件に入れる */
   const [forecastMin, setForecastMin] = useState<number | undefined>(undefined);
   const [forecast, setForecast] = useState<ForecastState>({ status: 'idle' });
   const [location, setLocation] = useState<Location>(() => loadLocation());
-  const [locating, setLocating] = useState<{ status: 'idle' } | { status: 'busy' } | { status: 'error'; message: string }>({
-    status: 'idle',
-  });
+  const [locating, setLocating] = useState<LocatingState>({ status: 'idle' });
   /**
    * 気温欄の値の出所。手入力なら日付を変えるまで予報で上書きしない。
    * 予報由来なら日付を変えた時点で消し、古い日の気温が残らないようにする。
    */
   const tempSource = useRef<'manual' | 'forecast' | null>(null);
+  const [tempIsManual, setTempIsManual] = useState(false);
+
+  const applyForecastTemp = (max: number, min: number) => {
+    setTempStr(String(Math.round(max)));
+    setForecastMin(min);
+    tempSource.current = 'forecast';
+    setTempIsManual(false);
+  };
 
   useEffect(() => {
     if (tempSource.current === 'forecast') {
@@ -90,11 +79,7 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
       .then((data) => {
         if (cancelled) return;
         setForecast({ status: 'ok', data });
-        if (tempSource.current !== 'manual') {
-          setTempStr(String(Math.round(data.max)));
-          setForecastMin(data.min);
-          tempSource.current = 'forecast';
-        }
+        if (tempSource.current !== 'manual') applyForecastTemp(data.max, data.min);
       })
       .catch(() => {
         if (!cancelled) setForecast({ status: 'error' });
@@ -104,9 +89,18 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
     };
   }, [dateStr, location]);
 
+  const changeTemp = (value: string) => {
+    tempSource.current = 'manual';
+    setTempIsManual(true);
+    setForecastMin(undefined);
+    setTempStr(value);
+  };
+  const resetTemp = () => {
+    if (forecast.status === 'ok') applyForecastTemp(forecast.data.max, forecast.data.min);
+  };
+
   /** 位置情報の取得中に別の地点を選んだら、遅れて届いた結果を捨てるための連番 */
   const locateSeq = useRef(0);
-
   const changeLocation = async (id: string) => {
     const seq = ++locateSeq.current;
     if (id === CURRENT_LOCATION_ID) {
@@ -131,13 +125,11 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
     saveLocation(preset);
     setLocating({ status: 'idle' });
   };
+
+  // ---- その他の条件
   const [formality, setFormality] = useState<Formality | ''>('');
-  /** 必ず含めたいアイテムの id (複数可) */
   const [mustInclude, setMustInclude] = useState<string[]>([]);
-  const [picking, setPicking] = useState(false);
   const [freshness, setFreshness] = useState<FreshnessMode>('balanced');
-  const [results, setResults] = useState<Outfit[] | null>(null);
-  const [worn, setWorn] = useState<{ outfit: Outfit; date: string } | null>(null);
 
   const wearStats = useMemo(() => buildWearStats(wearLog, dateStr), [wearLog, dateStr]);
   const recentOutfitIds = useMemo(() => {
@@ -151,20 +143,37 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
     return buildConditions(parseDate(dateStr) ?? new Date(), temp, forecastMin);
   }, [dateStr, tempStr, forecastMin]);
 
-  const run = () => {
-    setResults(
-      suggestOutfits(wardrobe, {
+  // ---- 提案 (条件が変わるたびに自動で再計算)
+  const [page, setPage] = useState(0);
+  const [results, setResults] = useState<Outfit[] | null>(null);
+  const [stale, setStale] = useState(false);
+  const [worn, setWorn] = useState<{ outfit: Outfit; date: string } | null>(null);
+
+  // 条件が変わったら 1 ページ目に戻す
+  useEffect(() => setPage(0), [wardrobe, conditions, formality, mustInclude, freshness, wearStats, recentOutfitIds]);
+
+  useEffect(() => {
+    if (wardrobe.length === 0) {
+      setResults(null);
+      return;
+    }
+    setStale(true);
+    const timer = setTimeout(() => {
+      const all = suggestOutfits(wardrobe, {
         conditions,
         formality: formality || undefined,
         mustInclude: mustInclude.length ? mustInclude : undefined,
-        limit: 5,
+        limit: PAGE_SIZE * (page + 1),
         wearStats: wearLog.length ? wearStats : undefined,
         freshnessWeight: FRESHNESS_PRESETS[freshness],
         recentOutfitIds,
-      }),
-    );
-    setWorn(null);
-  };
+      });
+      setResults(all.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE));
+      setStale(false);
+      setWorn(null);
+    }, RECALC_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [wardrobe, conditions, formality, mustInclude, freshness, wearStats, recentOutfitIds, wearLog.length, page]);
 
   const wearOutfit = (outfit: Outfit) => {
     onWear(
@@ -183,149 +192,49 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
     setWorn(null);
   };
 
-  // 削除されたアイテムが残らないよう、クローゼットに存在するものだけ表示する
-  const mustItems = mustInclude.map((id) => wardrobe.find((i) => i.id === id)).filter((i): i is ClothingItem => Boolean(i));
+  const hasMust = mustInclude.some((id) => wardrobe.some((i) => i.id === id));
 
   return (
     <section className="suggest">
-      <div className="conditions card">
-        <div className="cond-row">
-          <div className="cond-field cond-date">
-            <span>日付</span>
-            <div className="date-row">
-              <div className="segmented" role="group" aria-label="日付">
-                {(
-                  [
-                    ['today', '今日'],
-                    ['tomorrow', '明日'],
-                    ['custom', '日付を指定'],
-                  ] as const
-                ).map(([mode, label]) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    className={`seg ${dateMode === mode ? 'on' : ''}`}
-                    aria-pressed={dateMode === mode}
-                    onClick={() => pickDate(mode)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              {dateMode === 'custom' && (
-                <input type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} aria-label="日付を選択" />
-              )}
-              {dateMode !== 'custom' && <span className="muted">{dateStr.replace(/-/g, '/')}</span>}
-            </div>
-          </div>
-          <label>
-            <span>
-              気温 (℃) <span className="muted">任意</span>
-            </span>
-            <input
-              type="number"
-              inputMode="decimal"
-              placeholder="例: 18"
-              value={tempStr}
-              onChange={(e) => {
-                tempSource.current = 'manual';
-                setForecastMin(undefined);
-                setTempStr(e.target.value);
-              }}
-            />
-            <ForecastNote state={forecast} locationName={location.name} />
-          </label>
-          <label>
-            <span>予報の地点</span>
-            <select value={location.id} onChange={(e) => void changeLocation(e.target.value)}>
-              {PRESET_LOCATIONS.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
-              ))}
-              <option value={CURRENT_LOCATION_ID}>現在地 (位置情報を使う)</option>
-            </select>
-            {locating.status === 'busy' && <span className="forecast muted">位置情報を取得中… (最大 30 秒。他の地点を選んで中断できます)</span>}
-            {locating.status === 'error' && <span className="forecast warn">{locating.message}</span>}
-          </label>
-          <label>
-            <span>テイスト</span>
-            <select value={formality} onChange={(e) => setFormality(e.target.value as Formality | '')}>
-              <option value="">指定なし</option>
-              {ALL_FORMALITIES.map((f) => (
-                <option key={f} value={f}>
-                  {FORMALITY_LABEL[f]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>着用履歴</span>
-            <select value={freshness} onChange={(e) => setFreshness(e.target.value as FreshnessMode)} disabled={wearLog.length === 0}>
-              {(Object.keys(FRESHNESS_LABEL) as FreshnessMode[]).map((k) => (
-                <option key={k} value={k}>
-                  {FRESHNESS_LABEL[k]}
-                </option>
-              ))}
-            </select>
-            {wearLog.length === 0 && <span className="forecast muted">「このコーデを着た」で記録すると使えます</span>}
-          </label>
-          <div className="cond-field">
-            <span>
-              このアイテムを着たい <span className="muted">任意</span>
-            </span>
-            <div className="must-row">
-              <button type="button" className="btn" onClick={() => setPicking(true)} disabled={wardrobe.length === 0}>
-                アイテムを選ぶ
-              </button>
-              {mustItems.length === 0 ? (
-                <span className="muted">指定なし</span>
-              ) : (
-                mustItems.map((i) => (
-                  <span key={i.id} className="must-chip" data-testid="must-chip">
-                    <Swatch color={i.color} size={12} /> {i.name}
-                    <button
-                      type="button"
-                      className="must-remove"
-                      aria-label={`${i.name} を外す`}
-                      onClick={() => setMustInclude((prev) => prev.filter((id) => id !== i.id))}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="cond-summary">
-          <span className="pill">季節: {SEASON_LABEL[conditions.season]}</span>
-          {conditions.acceptableSeasons.length > 1 && (
-            <span className="pill muted">
-              境目: {conditions.acceptableSeasons.filter((s) => s !== conditions.season).map((s) => SEASON_LABEL[s]).join('・')}の服も候補に
-            </span>
-          )}
-          <span className="pill">目安の厚さ: {conditions.targetWarmth} ({WARMTH_LABEL[conditions.targetWarmth]})</span>
-        </div>
-        <button type="button" className="btn primary large" onClick={run} disabled={wardrobe.length === 0}>
-          コーデを提案する
-        </button>
-        {wardrobe.length === 0 && <p className="muted">先にクローゼットへアイテムを登録してください。</p>}
-      </div>
+      <SuggestConditions
+        wardrobe={wardrobe}
+        hasWearLog={wearLog.length > 0}
+        conditions={conditions}
+        dateMode={dateMode}
+        dateStr={dateStr}
+        onPickDate={pickDate}
+        onChangeDate={setDateStr}
+        location={location}
+        locating={locating}
+        forecast={forecast}
+        onChangeLocation={(id) => void changeLocation(id)}
+        tempStr={tempStr}
+        tempIsManual={tempIsManual}
+        onChangeTemp={changeTemp}
+        onResetTemp={resetTemp}
+        formality={formality}
+        onChangeFormality={setFormality}
+        freshness={freshness}
+        onChangeFreshness={setFreshness}
+        mustInclude={mustInclude}
+        onChangeMustInclude={setMustInclude}
+      />
 
-      {picking && <ItemPicker wardrobe={wardrobe} selected={mustInclude} onChange={setMustInclude} onClose={() => setPicking(false)} />}
+      {wardrobe.length === 0 && <p className="empty">先にクローゼットへアイテムを登録してください。</p>}
 
       {results && results.length === 0 && (
         <p className="empty">
-          {mustItems.length > 0
+          {hasMust
             ? '選んだアイテムを同時に着る組み合わせが作れませんでした。同じカテゴリを複数選んでいないか確認し、指定を減らしてください。'
-            : '組み合わせを作れませんでした。トップスとボトムス（またはワンピース）がそれぞれ1点以上必要です。'}
+            : page > 0
+              ? 'これ以上の案はありません。'
+              : '組み合わせを作れませんでした。トップスとボトムス（またはワンピース）がそれぞれ1点以上必要です。'}
         </p>
       )}
 
       {worn && (
         <div className="toast">
-          #{(results?.findIndex((o) => o.id === worn.outfit.id) ?? 0) + 1} のコーデを {worn.date} に着たとして記録しました。
+          #{page * PAGE_SIZE + (results?.findIndex((o) => o.id === worn.outfit.id) ?? 0) + 1} のコーデを {worn.date} に着たとして記録しました。
           <button type="button" className="link" onClick={undoWear}>
             取り消す
           </button>
@@ -336,109 +245,33 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
       )}
 
       {results && results.length > 0 && (
-        <div className="outfits">
-          {results.map((o, idx) => (
-            <OutfitCard
-              key={o.id}
-              outfit={o}
-              rank={idx + 1}
-              wearStats={wearLog.length ? wearStats : undefined}
-              worn={worn?.outfit.id === o.id}
-              onWear={() => wearOutfit(o)}
-            />
-          ))}
-        </div>
+        <>
+          <div className={`outfits ${stale ? 'stale' : ''}`} aria-busy={stale}>
+            {results.map((o, idx) => (
+              <OutfitCard
+                key={o.id}
+                outfit={o}
+                rank={page * PAGE_SIZE + idx + 1}
+                wearStats={wearLog.length ? wearStats : undefined}
+                worn={worn?.outfit.id === o.id}
+                onWear={() => wearOutfit(o)}
+              />
+            ))}
+          </div>
+          <div className="pager">
+            {page > 0 && (
+              <button type="button" className="btn" onClick={() => setPage((p) => p - 1)}>
+                前の案に戻る
+              </button>
+            )}
+            {results.length === PAGE_SIZE && (
+              <button type="button" className="btn" onClick={() => setPage((p) => p + 1)}>
+                別の案を見る
+              </button>
+            )}
+          </div>
+        </>
       )}
     </section>
-  );
-}
-
-function ForecastNote({ state, locationName }: { state: ForecastState; locationName: string }) {
-  switch (state.status) {
-    case 'loading':
-      return <span className="forecast muted">{locationName}の予報を取得中…</span>;
-    case 'ok':
-      return (
-        <span className="forecast muted">
-          {locationName}の予報: 最高 {Math.round(state.data.max)}℃ / 最低 {Math.round(state.data.min)}℃
-        </span>
-      );
-    case 'error':
-      return <span className="forecast warn">予報を取得できませんでした。手入力できます</span>;
-    case 'unavailable':
-      return <span className="forecast muted">この日付の予報は取得できません</span>;
-    default:
-      return null;
-  }
-}
-
-interface OutfitCardProps {
-  outfit: Outfit;
-  rank: number;
-  wearStats?: ReturnType<typeof buildWearStats>;
-  worn: boolean;
-  onWear: () => void;
-}
-
-function OutfitCard({ outfit, rank, wearStats, worn, onWear }: OutfitCardProps) {
-  const pct = (n: number) => Math.round(n * 100);
-  const order = ['outer', 'tops', 'onepiece', 'bottoms', 'shoes', 'accessory'];
-  const items = [...outfit.items].sort((a, b) => order.indexOf(a.category) - order.indexOf(b.category));
-  return (
-    <article className="outfit card">
-      <header>
-        <span className="rank">#{rank}</span>
-        <div className="palette">
-          {items.map((i) => (
-            <Swatch key={i.id} color={i.color} size={22} title={`${i.name}`} />
-          ))}
-        </div>
-        <span className="score" title="総合スコア">
-          {pct(outfit.score)}点
-        </span>
-      </header>
-      <div className="outfit-main">
-        <OutfitFigure parts={buildFigure(outfit.items)} width={110} />
-        <div className="outfit-items">
-          {items.map((i) => (
-            <ItemCard key={i.id} item={i} compact wear={wearStats ? statsFor(wearStats, i.id) : undefined} />
-          ))}
-        </div>
-      </div>
-      <ul className="reasons">
-        {outfit.reasons.map((r, i) => (
-          <li key={i}>✓ {r}</li>
-        ))}
-        {outfit.warnings.map((w, i) => (
-          <li key={`w${i}`} className="warn">
-            ⚠ {w}
-          </li>
-        ))}
-      </ul>
-      <div className="breakdown">
-        <Bar label="色" value={outfit.breakdown.color} />
-        <Bar label="厚さ" value={outfit.breakdown.warmth} />
-        <Bar label="テイスト" value={outfit.breakdown.formality} />
-        <Bar label="季節" value={outfit.breakdown.season} />
-        {wearStats && <Bar label="鮮度" value={outfit.breakdown.freshness} />}
-      </div>
-      <div className="outfit-actions">
-        <button type="button" className={`btn small ${worn ? '' : 'primary'}`} onClick={onWear} disabled={worn}>
-          {worn ? '記録済み' : 'このコーデを着た'}
-        </button>
-      </div>
-    </article>
-  );
-}
-
-function Bar({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="bar">
-      <span className="bar-label">{label}</span>
-      <span className="bar-track">
-        <span className="bar-fill" style={{ width: `${Math.round(value * 100)}%` }} />
-      </span>
-      <span className="bar-value">{Math.round(value * 100)}</span>
-    </div>
   );
 }
