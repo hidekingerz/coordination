@@ -6,3 +6,6 @@ dist
 # 個人のクローゼットデータ (スキルの出力既定ファイル)
 wardrobe-import*.json
 myCloth/
+
+# Playwright MCP の出力 (スナップショット・コンソールログ)
+.playwright-mcp/
