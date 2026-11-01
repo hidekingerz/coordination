@@ -151,3 +151,16 @@ describe('parseImport accessory kind handling', () => {
     expect(parseImport(JSON.stringify([{ ...base, category: 'tops', accessoryKind: 'belt' }]))[0].accessoryKind).toBeUndefined();
   });
 });
+
+describe('parseImport outer layer handling', () => {
+  it('keeps a valid layer and accepts japanese labels', () => {
+    expect(parseImport(JSON.stringify([{ ...base, category: 'outer', outerLayer: 'shell' }]))[0].outerLayer).toBe('shell');
+    expect(parseImport(JSON.stringify([{ name: 'a', category: 'アウター', 層: '中間着' }]))[0].outerLayer).toBe('mid');
+    expect(parseImport(JSON.stringify([{ name: 'a', category: 'outer', outerLayer: '外套' }]))[0].outerLayer).toBe('shell');
+  });
+
+  it('drops unknown values and ignores the layer on other categories', () => {
+    expect(parseImport(JSON.stringify([{ ...base, category: 'outer', outerLayer: 'inner' }]))[0].outerLayer).toBeUndefined();
+    expect(parseImport(JSON.stringify([{ ...base, outerLayer: 'shell' }]))[0].outerLayer).toBeUndefined();
+  });
+});

@@ -1,4 +1,4 @@
-import type { AccessoryKind, Category, ClothingItem, Sleeve } from '../types';
+import type { AccessoryKind, Category, ClothingItem, OuterLayer, Sleeve } from '../types';
 
 /** 服の形のバリエーション。トップスは袖丈、アウターは着丈、ボトムスは丈と形を表す */
 export type FigureVariant = 'short' | 'regular' | 'long' | 'skirt' | 'sleeveless' | AccessoryKind;
@@ -12,15 +12,40 @@ export interface FigurePart {
   accent?: string;
   itemId: string;
   name: string;
+  /** アウターの層。中間着は外套の下に描く */
+  layer?: OuterLayer;
 }
 
 /** 奥 (靴) から手前 (小物) への描画順 */
 const LAYER_ORDER: Category[] = ['shoes', 'bottoms', 'tops', 'onepiece', 'outer', 'accessory'];
 
-/** 描画順の位置。ベルトだけはトップスの上・アウターの下に挟む */
+/**
+ * 描画順の位置。ベルトはトップスの上・アウターの下に挟み、
+ * 中間着のアウターはベルトの上・外套の下に挟む。
+ */
 function layerOf(p: FigurePart): number {
   if (p.kind === 'accessory' && p.variant === 'belt') return LAYER_ORDER.indexOf('outer') - 0.5;
+  if (p.kind === 'outer' && p.layer === 'mid') return LAYER_ORDER.indexOf('outer') - 0.25;
   return LAYER_ORDER.indexOf(p.kind);
+}
+
+/** 名前に含まれていれば外套 (一番外に着るもの) と判断する語。中間着の語より優先 (ダウンジャケットは外套) */
+const SHELL_WORDS = [
+  'コート', 'ダウン', 'トレンチ', 'ブルゾン', 'マウンテン', 'ステンカラー', 'チェスター', 'ダッフル', 'ピーコート', 'アノラック',
+  'モッズ', 'スタジャン', 'coat', 'down', 'trench', 'blouson', 'parka', 'anorak',
+];
+/** 名前に含まれていれば中間着 (外套の下に重ねられるもの) と判断する語 */
+const MID_WORDS = ['ジャケット', 'カーディガン', 'ベスト', 'ジレ', 'jacket', 'cardigan', 'vest', 'gilet'];
+
+/**
+ * アウターの層を決める。明示指定 > 名前の語 (外套 > 中間着) > 厚さ (4 以上なら外套) の順。
+ */
+export function inferOuterLayer(item: ClothingItem): OuterLayer {
+  if (item.outerLayer) return item.outerLayer;
+  const name = item.name.toLowerCase();
+  if (SHELL_WORDS.some((w) => name.includes(w))) return 'shell';
+  if (MID_WORDS.some((w) => name.includes(w))) return 'mid';
+  return item.warmth >= 4 ? 'shell' : 'mid';
 }
 
 /** 名前に含まれていれば袖なしと判断する語 */
@@ -85,7 +110,8 @@ export function buildFigure(items: ClothingItem[]): FigurePart[] {
     const variant = variantOf(item);
     // 形が決められない小物は、誤った形で描くより描かない
     if (!variant) return [];
-    return [{ kind: item.category, variant, color: item.color, accent: item.subColor, itemId: item.id, name: item.name }];
+    const layer = item.category === 'outer' ? inferOuterLayer(item) : undefined;
+    return [{ kind: item.category, variant, color: item.color, accent: item.subColor, itemId: item.id, name: item.name, layer }];
   });
   return parts.sort((a, b) => layerOf(a) - layerOf(b));
 }

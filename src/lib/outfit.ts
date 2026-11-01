@@ -1,4 +1,5 @@
 import type { ClothingItem, Formality } from '../types';
+import { inferOuterLayer } from './figure';
 import { FORMALITY_LABEL, SEASON_LABEL } from '../types';
 import { COLOR_FAMILY_LABEL, evaluatePalette } from './color';
 import type { Conditions } from './season';
@@ -80,17 +81,30 @@ function seasonFit(item: ClothingItem, c: Conditions): number {
   return 0;
 }
 
+/**
+ * アウターを「一番外の 1 点」と「その下に重ねる中間着」に分ける。
+ * 外套があればそれが一番外、なければ最も厚いアウターを一番外とみなす。
+ */
+function splitOuters(items: ClothingItem[]): { shell: ClothingItem | undefined; mids: ClothingItem[] } {
+  const outers = items.filter((i) => i.category === 'outer');
+  if (outers.length === 0) return { shell: undefined, mids: [] };
+  const shell = outers.find((i) => inferOuterLayer(i) === 'shell') ?? outers.reduce((a, b) => (b.warmth > a.warmth ? b : a));
+  return { shell, mids: outers.filter((i) => i !== shell) };
+}
+
 /** 服の組み合わせ全体の体感的な厚さを求める */
 export function outfitWarmth(items: ClothingItem[]): number {
-  const outer = items.find((i) => i.category === 'outer');
-  const body = items.filter((i) => i.category === 'tops' || i.category === 'onepiece' || i.category === 'bottoms');
-  if (body.length === 0) return outer?.warmth ?? 3;
+  const { shell, mids } = splitOuters(items);
+  // 中間着 (外套の下のジャケットなど) は体の層として平均に含める
+  const body = [...items.filter((i) => i.category === 'tops' || i.category === 'onepiece' || i.category === 'bottoms'), ...mids];
+  if (body.length === 0) return shell?.warmth ?? 3;
   const bodyAvg = body.reduce((a, i) => a + i.warmth, 0) / body.length;
-  if (!outer) return bodyAvg;
+  if (!shell) return bodyAvg;
   // アウターは体感を大きく左右する。アウターの厚さを重視した加重平均に、
-  // 重ね着そのものによる体感の上昇 (LAYER_BONUS) を足す。
+  // 重ね着そのものによる体感の上昇 (LAYER_BONUS × 枚数) を足す。
   // これが無いと「薄手シャツ+ジャケット」が「厚手シャツ 1 枚」と同じ厚さになり、ジャケットが選ばれない。
-  return Math.min(5, Math.max(bodyAvg, outer.warmth * 0.7 + bodyAvg * 0.3) + LAYER_BONUS);
+  const layers = 1 + mids.length;
+  return Math.min(5, Math.max(bodyAvg, shell.warmth * 0.7 + bodyAvg * 0.3) + LAYER_BONUS * layers);
 }
 
 /** アウターを 1 枚重ねることによる体感の上昇 (厚さの単位) */
@@ -186,6 +200,10 @@ export function scoreOutfit(items: ClothingItem[], opts: SuggestOptions): Outfit
         : `${SEASON_LABEL[conditions.season]}の気候にちょうどよい厚さ`,
     );
   }
+  const layered = splitOuters(items);
+  if (layered.shell && layered.mids.length) {
+    reasons.push(`${layered.mids.map((i) => i.name).join('、')}の上に${layered.shell.name}を重ね着`);
+  }
   if (warmth.warning) warnings.push(warmth.warning);
   const chill = chillWarning(items, conditions);
   if (chill) warnings.push(chill);
@@ -275,8 +293,14 @@ export function suggestOutfits(wardrobe: ClothingItem[], opts: SuggestOptions): 
   if (bases.length === 0) return [];
 
   // アウター: 寒いときは必須寄り、暖かいときは「なし」も候補
-  const outerOptions: (ClothingItem | null)[] =
-    conditions.targetWarmth >= 4 && outers.length ? [...outers] : [null, ...outers];
+  const outerOptions: ClothingItem[][] = conditions.targetWarmth >= 4 && outers.length ? outers.map((o) => [o]) : [[], ...outers.map((o) => [o])];
+  // 寒い日 (目標 4 以上) か、着たいアイテムに中間着と外套の両方があるときは「中間着 + 外套」の 2 層も候補
+  const mids = outers.filter((o) => inferOuterLayer(o) === 'mid');
+  const shells = outers.filter((o) => inferOuterLayer(o) === 'shell');
+  const mustLayered = mids.some((o) => must.has(o.id)) && shells.some((o) => must.has(o.id));
+  if (conditions.targetWarmth >= 4 || mustLayered) {
+    for (const m of mids) for (const sh of shells) outerOptions.push([m, sh]);
+  }
   const shoeOptions: (ClothingItem | null)[] = shoes.length ? shoes : [null];
   const accessoryOptions: (ClothingItem | null)[] = [null, ...accessories.slice(0, 4)];
 
@@ -285,7 +309,7 @@ export function suggestOutfits(wardrobe: ClothingItem[], opts: SuggestOptions): 
     for (const outer of outerOptions) {
       for (const shoe of shoeOptions) {
         for (const acc of accessoryOptions) {
-          const items = [outer, ...base, shoe, acc].filter((x): x is ClothingItem => x !== null);
+          const items = [...outer, ...base, shoe, acc].filter((x): x is ClothingItem => x !== null);
           if (must.size && ![...must].every((id) => items.some((i) => i.id === id))) continue;
           results.push(scoreOutfit(items, opts));
         }
@@ -305,7 +329,7 @@ const MAX_SAME_OUTER = 2;
 const MIN_WITH_OUTER = 2;
 
 const hasOuter = (o: Outfit) => o.items.some((i) => i.category === 'outer');
-const outerKey = (o: Outfit) => o.items.find((i) => i.category === 'outer')?.id ?? '';
+const outerIds = (o: Outfit) => o.items.filter((i) => i.category === 'outer').map((i) => i.id);
 const topKey = (o: Outfit) =>
   o.items
     .filter((i) => i.category === 'tops' || i.category === 'onepiece')
@@ -335,10 +359,10 @@ function pickDiverse(results: Outfit[], limit: number, conditions: Conditions): 
     chosen.push(o);
     usedBase.add(baseKey(o));
     bump(topCount, topKey(o), 1);
-    if (outerKey(o)) bump(outerCount, outerKey(o), 1);
+    for (const id of outerIds(o)) bump(outerCount, id, 1);
   };
   const withinLimits = (o: Outfit) =>
-    (topCount.get(topKey(o)) ?? 0) < MAX_SAME_TOP && (!outerKey(o) || (outerCount.get(outerKey(o)) ?? 0) < MAX_SAME_OUTER);
+    (topCount.get(topKey(o)) ?? 0) < MAX_SAME_TOP && outerIds(o).every((id) => (outerCount.get(id) ?? 0) < MAX_SAME_OUTER);
   const fits = (o: Outfit, ignoreLimits = false) => {
     if (chosen.includes(o) || usedBase.has(baseKey(o))) return false;
     if (!ignoreLimits && !withinLimits(o)) return false;

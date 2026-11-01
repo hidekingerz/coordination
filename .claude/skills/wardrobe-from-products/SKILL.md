@@ -35,7 +35,7 @@ description: ブランドの商品情報から、Coordination アプリ（手持
 ]
 ```
 
-イラスト用の形 (`shape` / `sleeve` / `accessoryKind`) は任意だが、分かる範囲で出す。
+イラスト用の形 (`shape` / `sleeve` / `accessoryKind`) とアウターの層 (`outerLayer`) は任意だが、分かる範囲で出す。
 
 各項目の取りうる値と意味は `references/output-format.md` を見る (短いので最初に一度読む)。
 特に `warmth` (1=真夏 … 5=真冬) と `seasons` は提案のフィルタに直結するので丁寧に決める。
@@ -105,8 +105,9 @@ node .claude/skills/wardrobe-from-products/scripts/fetch-page.mjs <商品ペー�
   同じカテゴリでも「感動パンツ」「スマートアンクルパンツ」のように名前がきれいめを示していれば `smart`。
 - **tags**: 検索に効く語を 2〜5 個。アイテム種別、主素材、機能名 (ヒートテック・エアリズム等)、シルエット。
 - **name**: 「商品名 (色)」。ブランド名は `brand` に入れるので name には含めない。
-- **shape / sleeve / accessoryKind** (任意、イラスト用): ボトムスは `pants` / `shorts` / `skirt`、トップス・ワンピースは
-  `short` / `long` / `sleeveless`、小物は `belt` / `neck` (マフラー・ストール) / `hat` / `bag` / `necklace`。
+- **shape / sleeve / accessoryKind / outerLayer** (任意): ボトムスは `pants` / `shorts` / `skirt`、トップス・ワンピースは
+  `short` / `long` / `sleeveless`、小物は `belt` / `neck` (マフラー・ストール) / `hat` / `bag` / `necklace`、
+  アウターは `mid` (ジャケット・カーディガンなど外套の下に重ねられるもの) / `shell` (コート・ダウンなど一番外に着るもの)。
   商品名や画像から分かるときだけ出し、分からなければ省略する (アプリが名前から推定する)。
 
 推定で埋めた項目はユーザーに一言伝える (「素材不明だったので warmth=3 にしました」)。黙って埋めない。
