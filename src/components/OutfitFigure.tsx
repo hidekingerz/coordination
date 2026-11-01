@@ -12,6 +12,8 @@ interface Props {
  * 座標は viewBox 0 0 120 240 固定。奥から手前の順に parts を描画する。
  */
 export function OutfitFigure({ parts, width = 120 }: Props) {
+  // 中間着があるときは外套の前を広めに開けて、中のジャケットが見えるようにする
+  const hasMid = parts.some((p) => p.kind === 'outer' && p.layer === 'mid');
   return (
     <svg
       className="figure"
@@ -31,9 +33,9 @@ export function OutfitFigure({ parts, width = 120 }: Props) {
         <rect x="62" y="106" width="15" height="104" rx="5" />
       </g>
       {parts.map((p) => (
-        <g key={p.itemId} className="figure-part" data-part={`${p.kind}:${p.variant}`}>
+        <g key={p.itemId} className="figure-part" data-part={`${p.kind}:${p.variant}`} data-layer={p.layer}>
           <title>{p.name}</title>
-          {shapeOf(p)}
+          {shapeOf(p, hasMid)}
         </g>
       ))}
     </svg>
@@ -99,7 +101,7 @@ function accessory(variant: FigurePart['variant'], fill: string, accent?: string
   }
 }
 
-function shapeOf(p: FigurePart): ReactNode {
+function shapeOf(p: FigurePart, hasMid = false): ReactNode {
   const fill = p.color;
   const accent = p.accent;
   switch (p.kind) {
@@ -151,14 +153,25 @@ function shapeOf(p: FigurePart): ReactNode {
       );
     case 'outer': {
       const length = p.variant === 'long' ? 132 : 86;
+      if (p.layer === 'mid' && hasMid) {
+        // 外套の下の中間着。外套の前開きからのぞく幅だけ内側に描く
+        return (
+          <>
+            <rect x="30" y="38" width="26" height={length} rx="5" fill={fill} />
+            <rect x="64" y="38" width="26" height={length} rx="5" fill={fill} />
+          </>
+        );
+      }
+      // 外套。中間着があるときは前を広めに開ける
+      const panel = hasMid ? 28 : 34;
       return (
         <>
-          <rect x="22" y="38" width="34" height={length} rx="6" fill={fill} />
-          <rect x="64" y="38" width="34" height={length} rx="6" fill={fill} />
+          <rect x="22" y="38" width={panel} height={length} rx="6" fill={fill} />
+          <rect x={120 - 22 - panel} y="38" width={panel} height={length} rx="6" fill={fill} />
           {accent && (
             <>
-              <rect x="52" y="38" width="4" height={length} fill={accent} />
-              <rect x="64" y="38" width="4" height={length} fill={accent} />
+              <rect x={22 + panel - 4} y="38" width="4" height={length} fill={accent} />
+              <rect x={120 - 22 - panel} y="38" width="4" height={length} fill={accent} />
             </>
           )}
         </>

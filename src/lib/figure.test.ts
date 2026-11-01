@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ClothingItem } from '../types';
-import { buildFigure, inferAccessoryKind, inferSleeve } from './figure';
+import { buildFigure, inferAccessoryKind, inferOuterLayer, inferSleeve } from './figure';
 
 function item(partial: Partial<ClothingItem> & Pick<ClothingItem, 'id' | 'category'>): ClothingItem {
   return {
@@ -166,5 +166,37 @@ describe('belt layering', () => {
   it('still draws other accessories in front of everything', () => {
     const parts = buildFigure([item({ id: 'out', category: 'outer' }), item({ id: 'm', name: 'マフラー', category: 'accessory' })]);
     expect(parts.map((p) => p.itemId)).toEqual(['out', 'm']);
+  });
+});
+
+describe('outer layer (mid vs shell)', () => {
+  it('uses an explicit outerLayer first', () => {
+    expect(inferOuterLayer(item({ id: 'a', name: 'コート', category: 'outer', outerLayer: 'mid' }))).toBe('mid');
+    expect(inferOuterLayer(item({ id: 'b', name: 'ジャケット', category: 'outer', outerLayer: 'shell' }))).toBe('shell');
+  });
+
+  it('infers shells (coats, down, trench, blouson) and mids (jackets, cardigans, vests) from the name', () => {
+    for (const n of ['ステンカラーコート', 'ダウンジャケット', 'トレンチコート', 'ブルゾン', 'wool coat', 'down parka'])
+      expect(inferOuterLayer(item({ id: n, name: n, category: 'outer', warmth: 2 })), n).toBe('shell');
+    for (const n of ['テーラードジャケット', 'ライダースジャケット', 'カーディガン', 'ニットベスト', 'ジレ', 'leather jacket'])
+      expect(inferOuterLayer(item({ id: n, name: n, category: 'outer', warmth: 5 })), n).toBe('mid');
+  });
+
+  it('falls back to warmth when the name gives no hint: 4 and up is a shell', () => {
+    expect(inferOuterLayer(item({ id: 'a', name: 'はおりもの', category: 'outer', warmth: 3 }))).toBe('mid');
+    expect(inferOuterLayer(item({ id: 'b', name: 'はおりもの', category: 'outer', warmth: 4 }))).toBe('shell');
+  });
+
+  it('draws a mid layer between the tops and the shell, and marks the layers', () => {
+    const parts = buildFigure([
+      item({ id: 'coat', name: 'コート', category: 'outer', warmth: 4 }),
+      item({ id: 'tee', category: 'tops' }),
+      item({ id: 'jacket', name: 'ジャケット', category: 'outer', warmth: 3 }),
+      item({ id: 'belt', name: 'ベルト', category: 'accessory' }),
+    ]);
+    expect(parts.map((p) => p.itemId)).toEqual(['tee', 'belt', 'jacket', 'coat']);
+    expect(parts.find((p) => p.itemId === 'jacket')?.layer).toBe('mid');
+    expect(parts.find((p) => p.itemId === 'coat')?.layer).toBe('shell');
+    expect(parts.find((p) => p.itemId === 'tee')?.layer).toBeUndefined();
   });
 });

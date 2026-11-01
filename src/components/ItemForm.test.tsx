@@ -122,3 +122,19 @@ describe('ItemForm accessory kind', () => {
     expect(onSubmit.mock.calls[0][0]).toMatchObject({ category: 'accessory', accessoryKind: 'belt' });
   });
 });
+
+describe('ItemForm outer layer', () => {
+  it('shows the layer field only for outerwear and submits the choice', () => {
+    const { onSubmit } = renderForm();
+    expect(screen.queryByLabelText('層')).toBeNull();
+    fireEvent.change(nameInput(), { target: { value: 'コート' } });
+    fireEvent.change(categorySelect(), { target: { value: 'outer' } });
+    const layer = screen.getByLabelText('層') as HTMLSelectElement;
+    expect(layer.value).toBe('');
+    submit();
+    expect(onSubmit.mock.calls[0][0].outerLayer).toBeUndefined();
+    fireEvent.change(layer, { target: { value: 'shell' } });
+    submit();
+    expect(onSubmit.mock.calls[1][0]).toMatchObject({ category: 'outer', outerLayer: 'shell' });
+  });
+});

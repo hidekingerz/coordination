@@ -7,7 +7,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { parseImportDetailed } from '../../../../src/lib/storage';
-import { ACCESSORY_KIND_LABEL, BOTTOMS_SHAPE_LABEL, CATEGORY_LABEL, FORMALITY_LABEL, SEASON_LABEL, SLEEVE_LABEL } from '../../../../src/types';
+import { ACCESSORY_KIND_LABEL, BOTTOMS_SHAPE_LABEL, CATEGORY_LABEL, FORMALITY_LABEL, OUTER_LAYER_SHORT_LABEL, SEASON_LABEL, SLEEVE_LABEL } from '../../../../src/types';
 import { colorLabel } from '../../../../src/lib/color';
 
 // head などにパイプしたときの EPIPE で落ちないようにする
@@ -47,7 +47,9 @@ for (const i of items) {
         ? `袖丈=${i.sleeve ? SLEEVE_LABEL[i.sleeve] : '自動'}`
         : i.category === 'accessory'
           ? `種類=${i.accessoryKind ? ACCESSORY_KIND_LABEL[i.accessoryKind] : '自動'}`
-          : '';
+          : i.category === 'outer'
+            ? `層=${i.outerLayer ? OUTER_LAYER_SHORT_LABEL[i.outerLayer] : '自動'}`
+            : '';
   console.log(
     `- ${CATEGORY_LABEL[i.category]}${brand} ${i.name} | ${colorLabel(i.color)} ${i.color}` +
       (i.subColor ? ` / ${colorLabel(i.subColor)}` : '') +

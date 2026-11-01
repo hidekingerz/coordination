@@ -8,6 +8,8 @@ export type BottomsShape = 'pants' | 'shorts' | 'skirt';
 export type Sleeve = 'short' | 'long' | 'sleeveless';
 /** 小物の種類。イラストで描く位置と形に使う */
 export type AccessoryKind = 'neck' | 'belt' | 'hat' | 'bag' | 'necklace';
+/** アウターの層。中間着 (ジャケット・カーディガン) は外套 (コート・ダウン) の下に重ねられる */
+export type OuterLayer = 'mid' | 'shell';
 
 export interface ClothingItem {
   id: string;
@@ -21,6 +23,8 @@ export interface ClothingItem {
   sleeve?: Sleeve;
   /** 小物の種類。未設定なら名前から推定し、判定できなければイラストには描かない */
   accessoryKind?: AccessoryKind;
+  /** アウターの層。未設定なら名前と厚さから推定する */
+  outerLayer?: OuterLayer;
   /** 主色 (#rrggbb) */
   color: string;
   /** 副色 (#rrggbb)。柄物などで任意 */
@@ -89,6 +93,19 @@ export const ACCESSORY_KIND_LABEL: Record<AccessoryKind, string> = {
 };
 
 export const ALL_ACCESSORY_KINDS: AccessoryKind[] = ['neck', 'belt', 'hat', 'bag', 'necklace'];
+
+export const OUTER_LAYER_LABEL: Record<OuterLayer, string> = {
+  mid: '中間着 (ジャケット・カーディガン)',
+  shell: '外套 (コート・ダウン)',
+};
+
+/** 一覧で使う短いラベル */
+export const OUTER_LAYER_SHORT_LABEL: Record<OuterLayer, string> = {
+  mid: '中間着',
+  shell: '外套',
+};
+
+export const ALL_OUTER_LAYERS: OuterLayer[] = ['mid', 'shell'];
 
 export const ALL_CATEGORIES: Category[] = ['outer', 'tops', 'bottoms', 'onepiece', 'shoes', 'accessory'];
 export const ALL_SEASONS: Season[] = ['spring', 'summer', 'autumn', 'winter'];

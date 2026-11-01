@@ -1,5 +1,5 @@
-import type { AccessoryKind, BottomsShape, Category, ClothingItem, Formality, Season, Sleeve, Warmth } from '../types';
-import { ALL_ACCESSORY_KINDS, ALL_BOTTOMS_SHAPES, ALL_SEASONS, ALL_SLEEVES } from '../types';
+import type { AccessoryKind, BottomsShape, Category, ClothingItem, Formality, OuterLayer, Season, Sleeve, Warmth } from '../types';
+import { ALL_ACCESSORY_KINDS, ALL_BOTTOMS_SHAPES, ALL_OUTER_LAYERS, ALL_SEASONS, ALL_SLEEVES } from '../types';
 import { normalizeBrand } from './brand';
 import { normalizeHex } from './color';
 import { isEntry, type WearLog } from './wear';
@@ -235,13 +235,14 @@ export function coerceItem(raw: unknown, index = 0): { item: ClothingItem; warni
   const shape = category === 'bottoms' ? parseBottomsShape(o.shape ?? o.形) : undefined;
   const sleeve = category === 'tops' || category === 'onepiece' ? parseSleeve(o.sleeve ?? o.袖丈 ?? o.袖) : undefined;
   const accessoryKind = category === 'accessory' ? parseAccessoryKind(o.accessoryKind ?? o.種類) : undefined;
+  const outerLayer = category === 'outer' ? parseOuterLayer(o.outerLayer ?? o.層) : undefined;
 
   const id = typeof o.id === 'string' && o.id.trim() ? o.id.trim() : stableId([category, name, brand]);
   const imageUrl = typeof o.imageUrl === 'string' && o.imageUrl.trim() ? o.imageUrl.trim() : undefined;
   const createdAt = typeof o.createdAt === 'string' ? o.createdAt : new Date().toISOString();
 
   return {
-    item: { id, name, brand, category, shape, sleeve, accessoryKind, color, subColor, seasons, warmth, formality, tags: parseTags(o.tags ?? o.タグ), imageUrl, createdAt },
+    item: { id, name, brand, category, shape, sleeve, accessoryKind, outerLayer, color, subColor, seasons, warmth, formality, tags: parseTags(o.tags ?? o.タグ), imageUrl, createdAt },
     warnings,
   };
 }
@@ -306,6 +307,23 @@ export function parseAccessoryKind(raw: unknown): AccessoryKind | undefined {
   return ACCESSORY_KIND_ALIASES[raw.trim().toLowerCase()] ?? ACCESSORY_KIND_ALIASES[raw.trim()];
 }
 
+const OUTER_LAYER_ALIASES: Record<string, OuterLayer> = {
+  mid: 'mid',
+  中間着: 'mid',
+  ジャケット: 'mid',
+  内側: 'mid',
+  shell: 'shell',
+  外套: 'shell',
+  コート: 'shell',
+  外側: 'shell',
+};
+
+/** アウターの層。英語の値と日本語ラベルを受け付け、解釈できなければ未設定 */
+export function parseOuterLayer(raw: unknown): OuterLayer | undefined {
+  if (typeof raw !== 'string') return undefined;
+  return OUTER_LAYER_ALIASES[raw.trim().toLowerCase()] ?? OUTER_LAYER_ALIASES[raw.trim()];
+}
+
 export type MergeMode = 'merge' | 'replace';
 
 /** 取り込んだアイテムを既存のクローゼットに反映する */
@@ -322,7 +340,8 @@ function sanitize(item: ClothingItem): ClothingItem {
   const shape = ALL_BOTTOMS_SHAPES.includes(item.shape as BottomsShape) ? item.shape : undefined;
   const sleeve = ALL_SLEEVES.includes(item.sleeve as Sleeve) ? item.sleeve : undefined;
   const accessoryKind = ALL_ACCESSORY_KINDS.includes(item.accessoryKind as AccessoryKind) ? item.accessoryKind : undefined;
-  return { ...item, brand, shape, sleeve, accessoryKind };
+  const outerLayer = item.category === 'outer' && ALL_OUTER_LAYERS.includes(item.outerLayer as OuterLayer) ? item.outerLayer : undefined;
+  return { ...item, brand, shape, sleeve, accessoryKind, outerLayer };
 }
 
 function isItem(x: unknown): x is ClothingItem {

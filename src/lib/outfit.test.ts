@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ClothingItem } from '../types';
 import { SAMPLE_WARDROBE } from '../data/sample';
 import { buildConditions } from './season';
-import { outfitWarmth, scoreOutfit, suggestOutfits } from './outfit';
+import { outfitWarmth, scoreOutfit, suggestOutfits, type Outfit } from './outfit';
 
 describe('suggestOutfits', () => {
   it('returns up to the limit, sorted by score', () => {
@@ -210,5 +210,93 @@ describe('layering and variety (jacket-centric wardrobe)', () => {
     expect(chilly.breakdown.warmth).toBeLessThan(mild.breakdown.warmth);
     const withOuter = scoreOutfit([...items, byId('jacket-a')], { conditions: buildConditions(date, 19, 8) });
     expect(withOuter.breakdown.warmth).toBeGreaterThan(chilly.breakdown.warmth);
+  });
+});
+
+describe('two outer layers (jacket under a coat)', () => {
+  const mk = (id: string, category: ClothingItem['category'], warmth: ClothingItem['warmth'], color = '#8a8a8a'): ClothingItem => ({
+    id,
+    name: id,
+    category,
+    color,
+    seasons: ['autumn', 'winter'],
+    warmth,
+    formality: 'smart',
+    tags: [],
+    createdAt: '2026-01-01T00:00:00.000Z',
+  });
+  // 名前から jacket = 中間着、coat = 外套と推定される
+  const wardrobe: ClothingItem[] = [
+    mk('shirt-a', 'tops', 2, '#f5f5f0'),
+    mk('shirt-b', 'tops', 2, '#a9c4e0'),
+    mk('knit-a', 'tops', 3, '#141414'),
+    mk('knit-b', 'tops', 3, '#8a8a8a'),
+    mk('pants-a', 'bottoms', 3, '#4a4a4a'),
+    mk('pants-b', 'bottoms', 3, '#5a3a22'),
+    mk('pants-c', 'bottoms', 3, '#d9c4a5'),
+    mk('jacket-a', 'outer', 3, '#1f2a44'),
+    mk('jacket-b', 'outer', 3, '#8b5a2b'),
+    mk('coat-a', 'outer', 4, '#141414'),
+    mk('coat-b', 'outer', 5, '#8a8a8a'),
+    mk('coat-c', 'outer', 4, '#d9c4a5'),
+    mk('shoes', 'shoes', 3, '#141414'),
+  ];
+  const date = new Date('2026-12-10T12:00:00');
+  const outers = (o: Outfit) => o.items.filter((i) => i.category === 'outer');
+  const byId = (id: string) => wardrobe.find((i) => i.id === id)!;
+
+  it('counts the mid layer as body warmth and adds a bonus per layer', () => {
+    const shirt = mk('s', 'tops', 2);
+    const pants = mk('p', 'bottoms', 3);
+    const jacket = mk('jacket', 'outer', 3);
+    const coat = mk('coat', 'outer', 4);
+    const coatOnly = outfitWarmth([shirt, pants, coat]);
+    const both = outfitWarmth([shirt, pants, jacket, coat]);
+    expect(both).toBeGreaterThan(coatOnly);
+    // 体の平均 (2+3+3)/3 と外套 4 の加重平均 3.6 に、2 層分のボーナス 1.0
+    expect(both).toBeCloseTo(4.6, 5);
+    expect(outfitWarmth([shirt, pants, jacket, mk('coat5', 'outer', 5)])).toBe(5);
+    // 並び順に依存しない
+    expect(outfitWarmth([coat, jacket, pants, shirt])).toBe(both);
+  });
+
+  it('suggests a jacket under a coat on a cold day', () => {
+    const res = suggestOutfits(wardrobe, { conditions: buildConditions(date, 6), limit: 5 });
+    const layered = res.filter((o) => outers(o).length === 2);
+    expect(layered.length).toBeGreaterThanOrEqual(1);
+    for (const o of layered) {
+      expect(outers(o).map((i) => i.id.split('-')[0]).sort()).toEqual(['coat', 'jacket']);
+    }
+  });
+
+  it('never pairs two outers on a mild day, even deep in the ranking', () => {
+    const res = suggestOutfits(wardrobe, { conditions: buildConditions(date, 19), limit: 200 });
+    expect(res.length).toBeGreaterThan(5);
+    for (const o of res) expect(outers(o).length).toBeLessThanOrEqual(1);
+  });
+
+  it('pairs them on a mild day when both are requested as must-include', () => {
+    const res = suggestOutfits(wardrobe, { conditions: buildConditions(date, 19), limit: 5, mustInclude: ['jacket-a', 'coat-a'] });
+    expect(res.length).toBeGreaterThan(0);
+    for (const o of res) expect(outers(o).map((i) => i.id).sort()).toEqual(['coat-a', 'jacket-a']);
+  });
+
+  it('never pairs two mids or two shells', () => {
+    const res = suggestOutfits(wardrobe, { conditions: buildConditions(date, 6), limit: 5, mustInclude: ['jacket-a', 'jacket-b'] });
+    expect(res).toEqual([]);
+  });
+
+  it('counts each outer of a pair toward the same-outer limit', () => {
+    const res = suggestOutfits(wardrobe, { conditions: buildConditions(date, 6), limit: 5 });
+    const counts = new Map<string, number>();
+    for (const o of res) for (const i of outers(o)) counts.set(i.id, (counts.get(i.id) ?? 0) + 1);
+    expect(Math.max(...counts.values())).toBeLessThanOrEqual(2);
+  });
+
+  it('explains the layering in the reasons', () => {
+    const o = scoreOutfit([byId('shirt-a'), byId('pants-a'), byId('jacket-a'), byId('coat-a'), byId('shoes')], {
+      conditions: buildConditions(date, 6),
+    });
+    expect(o.reasons.some((r) => r.includes('jacket-a') && r.includes('coat-a') && r.includes('重ね'))).toBe(true);
   });
 });

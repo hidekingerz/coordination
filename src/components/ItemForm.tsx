@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
-import type { AccessoryKind, BottomsShape, Category, ClothingItem, Formality, Season, Sleeve, Warmth } from '../types';
+import type { AccessoryKind, BottomsShape, Category, ClothingItem, Formality, OuterLayer, Season, Sleeve, Warmth } from '../types';
 import {
   ACCESSORY_KIND_LABEL,
   ALL_ACCESSORY_KINDS,
   ALL_BOTTOMS_SHAPES,
   ALL_CATEGORIES,
   ALL_FORMALITIES,
+  ALL_OUTER_LAYERS,
   ALL_SEASONS,
   ALL_SLEEVES,
   BOTTOMS_SHAPE_LABEL,
   CATEGORY_LABEL,
   FORMALITY_LABEL,
+  OUTER_LAYER_LABEL,
   SEASON_LABEL,
   SLEEVE_LABEL,
   WARMTH_LABEL,
@@ -52,6 +54,7 @@ export function ItemForm({ initial, wardrobe = [], onSubmit, onCancel }: Props) 
   const [sleeve, setSleeve] = useState<Sleeve | ''>(initial?.sleeve ?? '');
   /** '' は自動 (名前から推定) */
   const [accessoryKind, setAccessoryKind] = useState<AccessoryKind | ''>(initial?.accessoryKind ?? '');
+  const [outerLayer, setOuterLayer] = useState<OuterLayer | ''>(initial?.outerLayer ?? '');
   const [color, setColor] = useState(initial?.color ?? '#f5f5f0');
   const [hasSub, setHasSub] = useState(Boolean(initial?.subColor));
   const [subColor, setSubColor] = useState(initial?.subColor ?? '#1f2a44');
@@ -83,6 +86,7 @@ export function ItemForm({ initial, wardrobe = [], onSubmit, onCancel }: Props) 
       shape: category === 'bottoms' ? shape : undefined,
       sleeve: (category === 'tops' || category === 'onepiece') && sleeve ? sleeve : undefined,
       accessoryKind: category === 'accessory' && accessoryKind ? accessoryKind : undefined,
+      outerLayer: category === 'outer' && outerLayer ? outerLayer : undefined,
       color: hex,
       subColor: sub ?? undefined,
       seasons: ALL_SEASONS.filter((s) => seasons.includes(s)),
@@ -137,6 +141,20 @@ export function ItemForm({ initial, wardrobe = [], onSubmit, onCancel }: Props) 
             {ALL_SLEEVES.map((sl) => (
               <option key={sl} value={sl}>
                 {SLEEVE_LABEL[sl]}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {category === 'outer' && (
+        <label>
+          層
+          <select value={outerLayer} onChange={(e) => setOuterLayer(e.target.value as OuterLayer | '')}>
+            <option value="">自動 (名前と厚さから判断)</option>
+            {ALL_OUTER_LAYERS.map((l) => (
+              <option key={l} value={l}>
+                {OUTER_LAYER_LABEL[l]}
               </option>
             ))}
           </select>
