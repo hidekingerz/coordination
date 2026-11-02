@@ -29,7 +29,7 @@
 
 ## 使い方
 
-Node.js 24 系が必要です。[mise](https://mise.jdx.dev/) を使っていれば `mise.toml` の設定で自動的に選ばれます。
+Node.js 26 系が必要です。[mise](https://mise.jdx.dev/) を使っていれば `mise.toml` の設定で自動的に選ばれます。
 
 ```bash
 npm install
