@@ -174,6 +174,27 @@ describe('SuggestView must-include picker', () => {
   });
 });
 
+describe('SuggestView must-include picker does not search until 決定', () => {
+  it('keeps the suggestions and chips untouched while items are being toggled in the dialog', async () => {
+    getForecast.mockResolvedValue({ max: 20, min: 12 });
+    const { SAMPLE_WARDROBE } = await import('../data/sample');
+    render(<SuggestView wardrobe={SAMPLE_WARDROBE} wearLog={[]} onWear={() => {}} onUnwear={() => {}} />);
+    await waitFor(() => expect(tempInput().value).toBe('20'));
+    const before = (await screen.findAllByRole('article')).map((a) => a.textContent);
+    ensureMore();
+    fireEvent.click(screen.getByRole('button', { name: 'アイテムを選ぶ' }));
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: /ライトブルーのオックスフォードシャツ/ }));
+    // ダイアログの中で選んだだけでは、裏の提案も条件のチップも変わらない
+    expect(document.querySelector('.outfits')?.getAttribute('aria-busy')).toBe('false');
+    expect(screen.queryAllByTestId('must-chip')).toHaveLength(0);
+    expect(screen.getAllByRole('article').map((a) => a.textContent)).toEqual(before);
+    fireEvent.click(within(dialog).getByRole('button', { name: '決定' }));
+    expect(screen.getAllByTestId('must-chip')).toHaveLength(1);
+    expect(document.querySelector('.outfits')?.getAttribute('aria-busy')).toBe('true');
+  });
+});
+
 describe('SuggestView must-include conflicts', () => {
   it('explains that the chosen items cannot be worn together instead of the generic empty message', async () => {
     getForecast.mockResolvedValue({ max: 20, min: 12 });

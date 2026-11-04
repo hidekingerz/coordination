@@ -7,20 +7,24 @@ import { Swatch } from './Swatch';
 
 interface Props {
   wardrobe: ClothingItem[];
-  /** 選択中のアイテム id */
+  /** 開いた時点で選択されているアイテム id */
   selected: string[];
-  /** 選択が変わるたびに全体のリストを返す */
+  /** 「決定」で確定した全体のリストを返す。選んでいる途中では呼ばれない */
   onChange: (ids: string[]) => void;
+  /** 閉じる (決定・キャンセル・Escape・背景クリックのいずれでも呼ばれる) */
   onClose: () => void;
 }
 
 /**
  * 「このアイテムを着たい」の選択画面。
  * クローゼットと同じカードを検索・カテゴリで絞り込みながら、タップで複数選べる。
+ * 選択はダイアログ内の下書きとして持ち、「決定」を押したときだけ親に渡す
+ * (選ぶたびに裏で提案を計算し直さないため)。決定せずに閉じると下書きは捨てる。
  */
-export function ItemPicker({ wardrobe, selected, onChange, onClose }: Props) {
+export function ItemPicker({ wardrobe, selected: initial, onChange, onClose }: Props) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<Category | 'all'>('all');
+  const [selected, setSelected] = useState<string[]>(initial);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -34,7 +38,11 @@ export function ItemPicker({ wardrobe, selected, onChange, onClose }: Props) {
     return c;
   }, [wardrobe]);
 
-  const toggle = (id: string) => onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
+  const toggle = (id: string) => setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  const commit = () => {
+    onChange(selected);
+    onClose();
+  };
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -109,11 +117,14 @@ export function ItemPicker({ wardrobe, selected, onChange, onClose }: Props) {
 
         <div className="form-actions">
           {selected.length > 0 && (
-            <button type="button" className="btn" onClick={() => onChange([])}>
+            <button type="button" className="btn" onClick={() => setSelected([])}>
               すべて外す
             </button>
           )}
-          <button type="button" className="btn primary" onClick={onClose}>
+          <button type="button" className="btn" onClick={onClose}>
+            キャンセル
+          </button>
+          <button type="button" className="btn primary" onClick={commit}>
             決定
           </button>
         </div>

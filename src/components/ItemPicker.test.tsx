@@ -51,16 +51,43 @@ describe('ItemPicker', () => {
     expect(screen.getByText('チノパン')).toBeTruthy();
   });
 
-  it('toggles selection and reports the full selected list', () => {
-    const { onChange } = renderPicker(['t1']);
+  it('keeps toggles local and reports the full list only when 決定 is pressed', () => {
+    const { onChange, onClose } = renderPicker(['t1']);
     const t1 = screen.getByRole('button', { name: /白の無地Tシャツ/ });
     const b1 = screen.getByRole('button', { name: /チノパン/ });
     expect(t1.getAttribute('aria-pressed')).toBe('true');
     expect(b1.getAttribute('aria-pressed')).toBe('false');
     fireEvent.click(b1);
-    expect(onChange).toHaveBeenLastCalledWith(['t1', 'b1']);
+    expect(b1.getAttribute('aria-pressed')).toBe('true');
+    expect(within(screen.getByRole('dialog')).getByText('2 点選択中')).toBeTruthy();
+    expect(onChange).not.toHaveBeenCalled();
     fireEvent.click(t1);
-    expect(onChange).toHaveBeenLastCalledWith([]);
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '決定' }));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith(['b1']);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('discards the draft when closed without 決定 (Escape, backdrop, キャンセル)', () => {
+    const { onChange, onClose } = renderPicker(['t1']);
+    fireEvent.click(screen.getByRole('button', { name: /チノパン/ }));
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }));
+    expect(onClose).toHaveBeenCalledTimes(2);
+    fireEvent.click(screen.getByRole('dialog').parentElement!);
+    expect(onClose).toHaveBeenCalledTimes(3);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('clears everything with すべて外す but still waits for 決定', () => {
+    const { onChange } = renderPicker(['t1', 'b1']);
+    fireEvent.click(screen.getByRole('button', { name: 'すべて外す' }));
+    expect(within(screen.getByRole('dialog')).getByText('0 点選択中')).toBeTruthy();
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '決定' }));
+    expect(onChange).toHaveBeenCalledWith([]);
   });
 
   it('closes with the done button and with Escape', () => {
