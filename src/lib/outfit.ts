@@ -319,7 +319,7 @@ export function suggestOutfits(wardrobe: ClothingItem[], opts: SuggestOptions): 
 
   results.sort((a, b) => b.score - a.score);
 
-  return pickDiverse(results, limit, conditions);
+  return pickDiverse(results, limit, conditions, must);
 }
 
 /** 上位 limit 件の中で同じトップス / 同じアウターを使ってよい回数 */
@@ -346,23 +346,34 @@ const baseKey = (o: Outfit) =>
 /**
  * スコア順の候補から、似すぎない組み合わせを limit 件選ぶ。
  * - 同じトップス+ボトムスの組は 1 回、同じトップス / 同じアウターは 2 回まで
+ *   (「着たいアイテム」で指定したものは全候補に入るので、この回数制限の対象にしない)
  * - 共通アイテムがほぼ同じ提案は避ける
  * - 涼しい日はアウター入りを MIN_WITH_OUTER 件確保する (アウター候補があるとき)
+ * - 足りないときは制限を段階的に緩める (靴や小物だけ違う提案は最後の手段)
  */
-function pickDiverse(results: Outfit[], limit: number, conditions: Conditions): Outfit[] {
+function pickDiverse(results: Outfit[], limit: number, conditions: Conditions, must: Set<string> = new Set()): Outfit[] {
   const chosen: Outfit[] = [];
   const usedBase = new Set<string>();
   const topCount = new Map<string, number>();
   const outerCount = new Map<string, number>();
   const bump = (m: Map<string, number>, k: string, d: number) => m.set(k, (m.get(k) ?? 0) + d);
+  // 回数制限の対象になるのは、指定されていない (自由に選んだ) トップスとアウターだけ
+  const freeTopKey = (o: Outfit) => (must.has(topKey(o)) ? '' : topKey(o));
+  const freeOuterIds = (o: Outfit) => outerIds(o).filter((id) => !must.has(id));
   const accept = (o: Outfit) => {
     chosen.push(o);
     usedBase.add(baseKey(o));
-    bump(topCount, topKey(o), 1);
-    for (const id of outerIds(o)) bump(outerCount, id, 1);
+    bump(topCount, freeTopKey(o), 1);
+    for (const id of freeOuterIds(o)) bump(outerCount, id, 1);
+  };
+  const unaccept = (o: Outfit) => {
+    usedBase.delete(baseKey(o));
+    bump(topCount, freeTopKey(o), -1);
+    for (const id of freeOuterIds(o)) bump(outerCount, id, -1);
   };
   const withinLimits = (o: Outfit) =>
-    (topCount.get(topKey(o)) ?? 0) < MAX_SAME_TOP && outerIds(o).every((id) => (outerCount.get(id) ?? 0) < MAX_SAME_OUTER);
+    (freeTopKey(o) === '' || (topCount.get(freeTopKey(o)) ?? 0) < MAX_SAME_TOP) &&
+    freeOuterIds(o).every((id) => (outerCount.get(id) ?? 0) < MAX_SAME_OUTER);
   const fits = (o: Outfit, ignoreLimits = false) => {
     if (chosen.includes(o) || usedBase.has(baseKey(o))) return false;
     if (!ignoreLimits && !withinLimits(o)) return false;
@@ -385,13 +396,11 @@ function pickDiverse(results: Outfit[], limit: number, conditions: Conditions): 
       const victimIdx = chosen.map(hasOuter).lastIndexOf(false);
       if (victimIdx < 0) break;
       const victim = chosen.splice(victimIdx, 1)[0];
-      usedBase.delete(baseKey(victim));
-      bump(topCount, topKey(victim), -1);
+      unaccept(victim);
       const next = candidates.find((o) => fits(o)) ?? candidates.find((o) => fits(o, true));
       if (!next) {
         chosen.splice(victimIdx, 0, victim);
-        usedBase.add(baseKey(victim));
-        bump(topCount, topKey(victim), 1);
+        accept(victim);
         break;
       }
       candidates.splice(candidates.indexOf(next), 1);
@@ -400,15 +409,21 @@ function pickDiverse(results: Outfit[], limit: number, conditions: Conditions): 
     chosen.sort((a, b) => b.score - a.score);
   }
 
-  // 足りなければ残りから補充 (まずトップス・アウターの偏りを避けつつ、それでも足りなければ何でも)
-  for (const o of results) {
-    if (chosen.length >= limit) break;
-    if (!chosen.includes(o) && !usedBase.has(baseKey(o)) && withinLimits(o)) accept(o);
-  }
-  for (const o of results) {
-    if (chosen.length >= limit) break;
-    if (!chosen.includes(o)) accept(o);
-  }
+  // 足りなければ残りから補充。制限は段階的に緩める:
+  // 1. トップス・アウターの回数制限を守り、同じトップス+ボトムスも避ける
+  // 2. 同じトップス+ボトムスは許すが、回数制限は守る (違うアウター・トップスが出る)
+  // 3. 回数制限も諦めるが、同じトップス+ボトムスは避ける
+  // 4. それでも足りなければ何でも (靴や小物だけ違う組み合わせになる)
+  const fillWith = (ok: (o: Outfit) => boolean) => {
+    for (const o of results) {
+      if (chosen.length >= limit) break;
+      if (!chosen.includes(o) && ok(o)) accept(o);
+    }
+  };
+  fillWith((o) => !usedBase.has(baseKey(o)) && withinLimits(o));
+  fillWith((o) => withinLimits(o));
+  fillWith((o) => !usedBase.has(baseKey(o)));
+  fillWith(() => true);
   return chosen;
 }
 

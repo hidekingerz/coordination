@@ -300,3 +300,62 @@ describe('two outer layers (jacket under a coat)', () => {
     expect(o.reasons.some((r) => r.includes('jacket-a') && r.includes('coat-a') && r.includes('重ね'))).toBe(true);
   });
 });
+
+describe('diversity when an item is forced (mustInclude)', () => {
+  const mk = (id: string, category: ClothingItem['category'], warmth: ClothingItem['warmth'], color: string): ClothingItem => ({
+    id,
+    name: id,
+    category,
+    color,
+    seasons: ['autumn', 'winter'],
+    warmth,
+    formality: 'smart',
+    tags: [],
+    createdAt: '2026-01-01T00:00:00.000Z',
+  });
+  // 名前から jacket = 中間着、coat = 外套と推定される
+  const wardrobe: ClothingItem[] = [
+    mk('knit-a', 'tops', 4, '#141414'),
+    mk('knit-b', 'tops', 4, '#cfc5b5'),
+    mk('knit-c', 'tops', 3, '#5a3a22'),
+    mk('shirt-a', 'tops', 2, '#a9c4e0'),
+    mk('pants-a', 'bottoms', 3, '#141414'),
+    mk('pants-b', 'bottoms', 3, '#4a4a4a'),
+    mk('pants-c', 'bottoms', 3, '#d9c4a5'),
+    mk('pants-d', 'bottoms', 3, '#1f2a44'),
+    mk('jacket-a', 'outer', 3, '#141414'),
+    mk('jacket-b', 'outer', 3, '#1f2a44'),
+    mk('jacket-c', 'outer', 3, '#8b5a2b'),
+    mk('coat-a', 'outer', 5, '#141414'),
+    mk('coat-b', 'outer', 4, '#1f2a44'),
+    mk('boots', 'shoes', 4, '#141414'),
+    mk('loafers', 'shoes', 3, '#5a3a22'),
+    mk('belt-a', 'accessory', 3, '#141414'),
+    mk('belt-b', 'accessory', 3, '#5a3a22'),
+  ];
+  // 真冬 (目標の厚さ 5): 外套ありが基本で、中間着 + 外套の 2 層も候補になる
+  const conditions = buildConditions(new Date('2026-01-15T09:00:00'), 5, 0);
+  const outerIds = (o: Outfit) => o.items.filter((i) => i.category === 'outer').map((i) => i.id);
+  const baseKey = (o: Outfit) =>
+    o.items
+      .filter((i) => i.category === 'tops' || i.category === 'bottoms')
+      .map((i) => i.id)
+      .sort()
+      .join('+');
+
+  it('still varies the outerwear when a top is forced', () => {
+    const results = suggestOutfits(wardrobe, { conditions, limit: 5, mustInclude: ['knit-a'] });
+    expect(results).toHaveLength(5);
+    const counts = new Map<string, number>();
+    for (const o of results) for (const id of outerIds(o)) counts.set(id, (counts.get(id) ?? 0) + 1);
+    // 指定していないアウターは 2 回まで (MAX_SAME_OUTER) で、3 種類以上出る
+    expect(Math.max(...counts.values())).toBeLessThanOrEqual(2);
+    expect(counts.size).toBeGreaterThanOrEqual(3);
+  });
+
+  it('does not repeat the same top+bottom when an outer is forced', () => {
+    const results = suggestOutfits(wardrobe, { conditions, limit: 5, mustInclude: ['coat-a'] });
+    expect(results).toHaveLength(5);
+    expect(new Set(results.map(baseKey)).size).toBe(5);
+  });
+});
