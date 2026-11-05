@@ -13,7 +13,7 @@ vi.mock('../lib/weather', async (importOriginal) => {
 import { SuggestView } from './SuggestView';
 
 function renderView() {
-  return render(<SuggestView wardrobe={[]} wearLog={[]} onWear={() => {}} onUnwear={() => {}} onEdit={() => {}} />);
+  return render(<SuggestView wardrobe={[]} wearLog={[]} onWear={() => {}} onUnwear={() => {}} onEdit={() => {}} onChangeWardrobe={() => {}} onImportWearLog={() => {}} />);
 }
 
 /** 気温の入力欄。隠れていれば「気温を変える」で開く */
@@ -144,7 +144,7 @@ describe('SuggestView closet tiles', () => {
   it('adds a tile to the chips and the suggestions when pressed, and removes it from the chip', async () => {
     getForecast.mockResolvedValue({ max: 20, min: 12 });
     const { SAMPLE_WARDROBE } = await import('../data/sample');
-    render(<SuggestView wardrobe={SAMPLE_WARDROBE} wearLog={[]} onWear={() => {}} onUnwear={() => {}} onEdit={() => {}} />);
+    render(<SuggestView wardrobe={SAMPLE_WARDROBE} wearLog={[]} onWear={() => {}} onUnwear={() => {}} onEdit={() => {}} onChangeWardrobe={() => {}} onImportWearLog={() => {}} />);
     await waitFor(() => expect(tempInput().value).toBe('20'));
     expect(screen.queryByRole('button', { name: 'アイテムを選ぶ' })).toBeNull();
 
@@ -170,7 +170,7 @@ describe('SuggestView closet tiles', () => {
   it('recomputes right after a tile is pressed, and two quick presses both land', async () => {
     getForecast.mockResolvedValue({ max: 20, min: 12 });
     const { SAMPLE_WARDROBE } = await import('../data/sample');
-    render(<SuggestView wardrobe={SAMPLE_WARDROBE} wearLog={[]} onWear={() => {}} onUnwear={() => {}} onEdit={() => {}} />);
+    render(<SuggestView wardrobe={SAMPLE_WARDROBE} wearLog={[]} onWear={() => {}} onUnwear={() => {}} onEdit={() => {}} onChangeWardrobe={() => {}} onImportWearLog={() => {}} />);
     await waitFor(() => expect(tempInput().value).toBe('20'));
     await screen.findAllByRole('article');
     fireEvent.click(screen.getByRole('button', { name: '今の条件に合う服だけ' }));
@@ -188,7 +188,7 @@ describe('SuggestView must-include conflicts', () => {
   it('explains that the chosen items cannot be worn together instead of the generic empty message', async () => {
     getForecast.mockResolvedValue({ max: 20, min: 12 });
     const { SAMPLE_WARDROBE } = await import('../data/sample');
-    render(<SuggestView wardrobe={SAMPLE_WARDROBE} wearLog={[]} onWear={() => {}} onUnwear={() => {}} onEdit={() => {}} />);
+    render(<SuggestView wardrobe={SAMPLE_WARDROBE} wearLog={[]} onWear={() => {}} onUnwear={() => {}} onEdit={() => {}} onChangeWardrobe={() => {}} onImportWearLog={() => {}} />);
     await waitFor(() => expect(tempInput().value).toBe('20'));
     fireEvent.click(screen.getByRole('button', { name: '今の条件に合う服だけ' }));
     fireEvent.click(screen.getByRole('tab', { name: /トップス/ }));
@@ -233,5 +233,20 @@ describe('SuggestView date shortcuts', () => {
     // 今日に戻すとカレンダーは閉じる
     fireEvent.click(screen.getByRole('button', { name: '今日' }));
     expect(document.querySelector('input[type=date]')).toBeNull();
+  });
+});
+
+describe('SuggestView empty wardrobe', () => {
+  it('offers import and sample data in place, without the old registration hint', async () => {
+    getForecast.mockResolvedValue({ max: 20, min: 12 });
+    const onChangeWardrobe = vi.fn();
+    render(
+      <SuggestView wardrobe={[]} wearLog={[]} onWear={() => {}} onUnwear={() => {}} onEdit={() => {}} onChangeWardrobe={onChangeWardrobe} onImportWearLog={() => {}} />,
+    );
+    expect(screen.queryByText('先にクローゼットへアイテムを登録してください。')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Gist / JSON から取り込む' }));
+    expect(screen.getByRole('heading', { name: 'クローゼットを取り込む' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'サンプルデータを読み込む' }));
+    expect(onChangeWardrobe).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ id: 's-tops-1' })]));
   });
 });

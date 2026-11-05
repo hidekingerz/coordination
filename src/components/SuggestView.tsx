@@ -8,6 +8,9 @@ import { buildWearStats, daysBetween, type WearLog } from '../lib/wear';
 import { SuggestConditions, type DateMode, type ForecastState, type LocatingState } from './SuggestConditions';
 import { OutfitCard } from './OutfitCard';
 import { ClosetPanel } from './ClosetPanel';
+import { ImportDialog } from './ImportDialog';
+import { mergeWardrobe, type MergeMode } from '../lib/storage';
+import { SAMPLE_WARDROBE } from '../data/sample';
 
 interface Props {
   wardrobe: ClothingItem[];
@@ -16,6 +19,9 @@ interface Props {
   onUnwear: (itemIds: string[], date: string) => void;
   /** 「クローゼットを編集 ›」で編集画面へ */
   onEdit: () => void;
+  /** 空のクローゼットから取り込み・サンプル読み込みをしたとき */
+  onChangeWardrobe: (next: ClothingItem[]) => void;
+  onImportWearLog: (log: WearLog) => void;
 }
 
 const PAGE_SIZE = 5;
@@ -34,7 +40,7 @@ function shiftedKey(days: number): string {
   return toDateKey(d);
 }
 
-export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit }: Props) {
+export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onChangeWardrobe, onImportWearLog }: Props) {
   // ---- 日付
   const [dateStr, setDateStr] = useState(() => shiftedKey(0));
   const [dateMode, setDateMode] = useState<DateMode>('today');
@@ -197,6 +203,14 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit }: Pro
 
   const hasMust = mustInclude.some((id) => wardrobe.some((i) => i.id === id));
 
+  // ---- 空のクローゼットからの取り込み
+  const [importing, setImporting] = useState(false);
+  const applyImport = (items: ClothingItem[], mode: MergeMode, importedLog?: WearLog) => {
+    onChangeWardrobe(mergeWardrobe(wardrobe, items, mode));
+    if (importedLog?.length) onImportWearLog(importedLog);
+    setImporting(false);
+  };
+
   return (
     <section className="suggest">
       <SuggestConditions
@@ -228,11 +242,17 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit }: Pro
         onToggle={(id) => setMustInclude((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))}
         onClear={() => setMustInclude([])}
         onEdit={onEdit}
-        onImport={() => {}}
-        onLoadSample={() => {}}
+        onImport={() => setImporting(true)}
+        onLoadSample={() => onChangeWardrobe(SAMPLE_WARDROBE)}
       />
 
-      {wardrobe.length === 0 && <p className="empty">先にクローゼットへアイテムを登録してください。</p>}
+      {importing && (
+        <div className="modal-backdrop" onClick={() => setImporting(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <ImportDialog existingCount={wardrobe.length} onApply={applyImport} onClose={() => setImporting(false)} />
+          </div>
+        </div>
+      )}
 
       {results && results.length === 0 && (
         <p className="empty">

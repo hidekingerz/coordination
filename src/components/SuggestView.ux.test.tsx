@@ -21,7 +21,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 function renderView(wearLog: WearLog = []) {
-  return render(<SuggestView wardrobe={SAMPLE_WARDROBE} wearLog={wearLog} onWear={() => {}} onUnwear={() => {}} onEdit={() => {}} />);
+  return render(<SuggestView wardrobe={SAMPLE_WARDROBE} wearLog={wearLog} onWear={() => {}} onUnwear={() => {}} onEdit={() => {}} onChangeWardrobe={() => {}} onImportWearLog={() => {}} />);
 }
 const articlesText = () => screen.getAllByRole('article').map((a) => a.textContent ?? '');
 
