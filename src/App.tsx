@@ -47,7 +47,7 @@ export default function App() {
       </header>
       <main>
         {tab === 'suggest' ? (
-          <SuggestView wardrobe={wardrobe} wearLog={wearLog} onWear={wear} onUnwear={unwear} />
+          <SuggestView wardrobe={wardrobe} wearLog={wearLog} onWear={wear} onUnwear={unwear} onEdit={() => {}} />
         ) : (
           <WardrobeView
             wardrobe={wardrobe}

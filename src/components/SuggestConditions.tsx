@@ -1,12 +1,10 @@
 import { useState } from 'react';
-import type { ClothingItem, Formality } from '../types';
 import { ALL_FORMALITIES, FORMALITY_LABEL, SEASON_LABEL, WARMTH_LABEL } from '../types';
+import type { Formality } from '../types';
 import type { Conditions } from '../lib/season';
 import type { DailyTemperature } from '../lib/weather';
 import { CURRENT_LOCATION_ID, PRESET_LOCATIONS, type Location } from '../lib/location';
 import type { FreshnessMode } from '../lib/outfit';
-import { ItemPicker } from './ItemPicker';
-import { Swatch } from './Swatch';
 
 export type DateMode = 'today' | 'tomorrow' | 'custom';
 
@@ -20,7 +18,6 @@ export type ForecastState =
 export type LocatingState = { status: 'idle' } | { status: 'busy' } | { status: 'error'; message: string };
 
 interface Props {
-  wardrobe: ClothingItem[];
   hasWearLog: boolean;
   conditions: Conditions;
   // 日付
@@ -38,13 +35,11 @@ interface Props {
   tempIsManual: boolean;
   onChangeTemp: (value: string) => void;
   onResetTemp: () => void;
-  // テイスト・履歴・必須アイテム
+  // テイスト・履歴
   formality: Formality | '';
   onChangeFormality: (f: Formality | '') => void;
   freshness: FreshnessMode;
   onChangeFreshness: (f: FreshnessMode) => void;
-  mustInclude: string[];
-  onChangeMustInclude: (ids: string[]) => void;
 }
 
 const FRESHNESS_SEGMENTS: [FreshnessMode, string][] = [
@@ -77,15 +72,13 @@ function Segmented<T extends string>({
 
 /**
  * 提案の条件。よく使う「日付・テイスト」と地点・予報のステータスを常時表示し、
- * 例外的な調整 (気温の手入力、着たいアイテム、着用履歴) は「条件を絞る」に畳む。
+ * 例外的な調整 (気温の手入力、着用履歴) は「条件を絞る」に畳む。
  */
 export function SuggestConditions(p: Props) {
   const [open, setOpen] = useState(false);
   const [choosingLocation, setChoosingLocation] = useState(false);
-  const [picking, setPicking] = useState(false);
 
-  const mustItems = p.mustInclude.map((id) => p.wardrobe.find((i) => i.id === id)).filter((i): i is ClothingItem => Boolean(i));
-  const overrides = (p.tempIsManual ? 1 : 0) + (mustItems.length > 0 ? 1 : 0) + (p.hasWearLog && p.freshness !== 'balanced' ? 1 : 0);
+  const overrides = (p.tempIsManual ? 1 : 0) + (p.hasWearLog && p.freshness !== 'balanced' ? 1 : 0);
   const c = p.conditions;
 
   return (
@@ -184,33 +177,6 @@ export function SuggestConditions(p: Props) {
               )}
             </div>
           </div>
-          <div className="cond-field">
-            <span>
-              このアイテムを着たい <span className="muted">任意・複数可</span>
-            </span>
-            <div className="must-row">
-              <button type="button" className="btn" onClick={() => setPicking(true)} disabled={p.wardrobe.length === 0}>
-                アイテムを選ぶ
-              </button>
-              {mustItems.length === 0 ? (
-                <span className="muted">指定なし</span>
-              ) : (
-                mustItems.map((i) => (
-                  <span key={i.id} className="must-chip" data-testid="must-chip">
-                    <Swatch color={i.color} size={12} /> {i.name}
-                    <button
-                      type="button"
-                      className="must-remove"
-                      aria-label={`${i.name} を外す`}
-                      onClick={() => p.onChangeMustInclude(p.mustInclude.filter((id) => id !== i.id))}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))
-              )}
-            </div>
-          </div>
           {p.hasWearLog && (
             <div className="cond-field">
               <span>最近着た服の扱い</span>
@@ -220,7 +186,6 @@ export function SuggestConditions(p: Props) {
         </div>
       )}
 
-      {picking && <ItemPicker wardrobe={p.wardrobe} selected={p.mustInclude} onChange={p.onChangeMustInclude} onClose={() => setPicking(false)} />}
     </div>
   );
 }

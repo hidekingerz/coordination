@@ -21,7 +21,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 function renderView(wearLog: WearLog = []) {
-  return render(<SuggestView wardrobe={SAMPLE_WARDROBE} wearLog={wearLog} onWear={() => {}} onUnwear={() => {}} />);
+  return render(<SuggestView wardrobe={SAMPLE_WARDROBE} wearLog={wearLog} onWear={() => {}} onUnwear={() => {}} onEdit={() => {}} />);
 }
 const articlesText = () => screen.getAllByRole('article').map((a) => a.textContent ?? '');
 
@@ -86,10 +86,6 @@ describe('two-tier conditions', () => {
     const temp = screen.getByPlaceholderText('例: 18') as HTMLInputElement;
     fireEvent.change(temp, { target: { value: '12' } });
     expect(screen.getByRole('button', { name: /条件を絞る/ }).textContent).toMatch(/\(1\)/);
-    fireEvent.click(screen.getByRole('button', { name: 'アイテムを選ぶ' }));
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /白の無地Tシャツ/ }));
-    fireEvent.click(screen.getByRole('button', { name: '決定' }));
-    expect(screen.getByRole('button', { name: /条件を絞る/ }).textContent).toMatch(/\(2\)/);
   });
 
   it('lets the user return a manually typed temperature to the forecast', async () => {

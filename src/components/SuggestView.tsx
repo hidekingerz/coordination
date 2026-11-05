@@ -7,12 +7,15 @@ import { FRESHNESS_PRESETS, suggestOutfits, type FreshnessMode, type Outfit } fr
 import { buildWearStats, daysBetween, type WearLog } from '../lib/wear';
 import { SuggestConditions, type DateMode, type ForecastState, type LocatingState } from './SuggestConditions';
 import { OutfitCard } from './OutfitCard';
+import { ClosetPanel } from './ClosetPanel';
 
 interface Props {
   wardrobe: ClothingItem[];
   wearLog: WearLog;
   onWear: (itemIds: string[], date: string, outfitId?: string) => void;
   onUnwear: (itemIds: string[], date: string) => void;
+  /** 「クローゼットを編集 ›」で編集画面へ */
+  onEdit: () => void;
 }
 
 const PAGE_SIZE = 5;
@@ -31,7 +34,7 @@ function shiftedKey(days: number): string {
   return toDateKey(d);
 }
 
-export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
+export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit }: Props) {
   // ---- 日付
   const [dateStr, setDateStr] = useState(() => shiftedKey(0));
   const [dateMode, setDateMode] = useState<DateMode>('today');
@@ -197,7 +200,6 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
   return (
     <section className="suggest">
       <SuggestConditions
-        wardrobe={wardrobe}
         hasWearLog={wearLog.length > 0}
         conditions={conditions}
         dateMode={dateMode}
@@ -216,8 +218,18 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear }: Props) {
         onChangeFormality={setFormality}
         freshness={freshness}
         onChangeFreshness={setFreshness}
-        mustInclude={mustInclude}
-        onChangeMustInclude={setMustInclude}
+      />
+
+      <ClosetPanel
+        wardrobe={wardrobe}
+        conditions={conditions}
+        wearStats={wearLog.length ? wearStats : undefined}
+        selected={mustInclude}
+        onToggle={(id) => setMustInclude((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))}
+        onClear={() => setMustInclude([])}
+        onEdit={onEdit}
+        onImport={() => {}}
+        onLoadSample={() => {}}
       />
 
       {wardrobe.length === 0 && <p className="empty">先にクローゼットへアイテムを登録してください。</p>}
