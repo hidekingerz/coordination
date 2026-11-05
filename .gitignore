@@ -9,3 +9,4 @@ myCloth/
 
 # Playwright MCP の出力 (スナップショット・コンソールログ)
 .playwright-mcp/
+.superpowers/
