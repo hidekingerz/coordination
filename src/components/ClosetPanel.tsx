@@ -1,0 +1,172 @@
+import { useMemo, useState } from 'react';
+import type { Category, ClothingItem } from '../types';
+import { ALL_CATEGORIES, CATEGORY_LABEL } from '../types';
+import type { Conditions } from '../lib/season';
+import { filterWardrobe } from '../lib/filter';
+import { fitsConditions } from '../lib/outfit';
+import { compareUnworn, describeLastWorn, statsFor, type WearStatsMap } from '../lib/wear';
+import { Swatch } from './Swatch';
+
+export interface ClosetPanelProps {
+  wardrobe: ClothingItem[];
+  conditions: Conditions;
+  /** 着用履歴があるときだけ渡す。並び替えとタイルの「3日前」表示に使う */
+  wearStats?: WearStatsMap;
+  /** 着たい服の id (SuggestView の mustInclude) */
+  selected: string[];
+  onToggle: (id: string) => void;
+  onClear: () => void;
+  onEdit: () => void;
+  /** クローゼットが空のときの案内から呼ぶ */
+  onImport: () => void;
+  onLoadSample: () => void;
+}
+
+/**
+ * メイン画面のクローゼット。カテゴリをタブにして 1 段だけ見せ、タイルを押すと「着たい服」に入る。
+ * 検索と「今の条件に合う服だけ」で候補を減らし、高さ固定のグリッドの中をスクロールする。
+ */
+export function ClosetPanel(p: ClosetPanelProps) {
+  const { wardrobe, conditions, wearStats, selected } = p;
+  const [query, setQuery] = useState('');
+  const [fitOnly, setFitOnly] = useState(true);
+
+  /** 服のあるカテゴリ (ALL_CATEGORIES 順)。検索で 0 件になっても消さない */
+  const categories = useMemo(() => ALL_CATEGORIES.filter((c) => wardrobe.some((i) => i.category === c)), [wardrobe]);
+  const [tabState, setTab] = useState<Category | null>(null);
+  // 選んでいたカテゴリの服が無くなったときも、服のある最初のカテゴリに戻す
+  const tab: Category | null = tabState && categories.includes(tabState) ? tabState : (categories[0] ?? null);
+
+  /** 検索とフィルタに合う服 (カテゴリは問わない) */
+  const matches = (q: string, fit: boolean) =>
+    filterWardrobe(wardrobe, { category: 'all', brand: 'all', query: q }).filter((i) => !fit || fitsConditions(i, conditions));
+
+  const visibleAll = useMemo(() => matches(query, fitOnly), [wardrobe, conditions, query, fitOnly]); // eslint-disable-line react-hooks/exhaustive-deps
+  const countOf = (items: ClothingItem[], c: Category) => items.filter((i) => i.category === c).length;
+  const totals = useMemo(() => Object.fromEntries(categories.map((c) => [c, countOf(wardrobe, c)])) as Record<Category, number>, [wardrobe, categories]);
+
+  const visible = useMemo(() => {
+    const items = visibleAll.filter((i) => i.category === tab);
+    return wearStats ? [...items].sort(compareUnworn(wearStats)) : items;
+  }, [visibleAll, tab, wearStats]);
+
+  /** 該当のある最初のカテゴリへタブを移す (今のタブに該当があれば動かさない) */
+  const jumpIfEmpty = (items: ClothingItem[]) => {
+    if (tab && countOf(items, tab) > 0) return;
+    const first = categories.find((c) => countOf(items, c) > 0);
+    if (first) setTab(first);
+  };
+  const changeQuery = (q: string) => {
+    setQuery(q);
+    jumpIfEmpty(matches(q, fitOnly));
+  };
+  const dropFilterAndJump = () => {
+    setFitOnly(false);
+    jumpIfEmpty(matches(query, false));
+  };
+
+  const selectedItems = selected.map((id) => wardrobe.find((i) => i.id === id)).filter((i): i is ClothingItem => Boolean(i));
+  /** フィルタを外せば出てくる服の数 (全カテゴリ)。0 件表示の逃げ道に使う */
+  const hiddenByFilter = fitOnly && visibleAll.length === 0 ? matches(query, false).length : 0;
+
+  const tabLabel = (c: Category) => {
+    const shown = countOf(visibleAll, c);
+    const total = totals[c];
+    return `${CATEGORY_LABEL[c]} ${shown < total ? `${shown}/${total}` : total}`;
+  };
+
+  return (
+    <section className="closet card" aria-label="クローゼット">
+      <div className="closet-head">
+        <span>着たい服:</span>
+        {selectedItems.length === 0 ? (
+          <span className="muted">指定なし</span>
+        ) : (
+          selectedItems.map((i) => (
+            <span key={i.id} className="must-chip" data-testid="must-chip">
+              <Swatch color={i.color} size={12} /> {i.name}
+              <button type="button" className="must-remove" aria-label={`${i.name} を外す`} onClick={() => p.onToggle(i.id)}>
+                ×
+              </button>
+            </span>
+          ))
+        )}
+        {selectedItems.length > 0 && (
+          <button type="button" className="link" onClick={p.onClear}>
+            すべて外す
+          </button>
+        )}
+        <span className="spacer" />
+        <button type="button" className="link" onClick={p.onEdit}>
+          クローゼットを編集 ›
+        </button>
+      </div>
+
+      {wardrobe.length === 0 ? (
+        <div className="empty">
+          <p>まだアイテムがありません。手持ちの服を登録するか、Gist / JSON から取り込むか、サンプルデータで試してみてください。</p>
+          <button type="button" className="btn" onClick={p.onImport}>
+            Gist / JSON から取り込む
+          </button>{' '}
+          <button type="button" className="btn" onClick={p.onLoadSample}>
+            サンプルデータを読み込む
+          </button>{' '}
+          <button type="button" className="btn" onClick={p.onEdit}>
+            アイテムを追加
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="closet-tools">
+            <input className="search" placeholder="名前・ブランド・タグで検索" value={query} onChange={(e) => changeQuery(e.target.value)} />
+            <button type="button" className={`chip ${fitOnly ? 'on' : ''}`} aria-pressed={fitOnly} onClick={() => setFitOnly((v) => !v)}>
+              今の条件に合う服だけ
+            </button>
+          </div>
+          <div className="closet-tabs" role="tablist" aria-label="カテゴリ">
+            {categories.map((c) => (
+              <button key={c} type="button" role="tab" className="closet-tab" aria-selected={tab === c} onClick={() => setTab(c)}>
+                {tabLabel(c)}
+              </button>
+            ))}
+          </div>
+          {visible.length === 0 ? (
+            <p className="muted">
+              条件に合う服がありません。
+              {hiddenByFilter > 0 && (
+                <>
+                  {' '}
+                  <button type="button" className="link" onClick={dropFilterAndJump}>
+                    「今の条件に合う服だけ」を外すと {hiddenByFilter} 点
+                  </button>
+                </>
+              )}
+            </p>
+          ) : (
+            <div className="closet-grid">
+              {visible.map((item) => {
+                const on = selected.includes(item.id);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="closet-tile"
+                    aria-pressed={on}
+                    aria-label={`${item.name} を${on ? '選択解除' : '選択'}`}
+                    onClick={() => p.onToggle(item.id)}
+                  >
+                    <span className="item-visual" style={{ background: item.color }}>
+                      {item.imageUrl ? <img src={item.imageUrl} alt="" /> : null}
+                    </span>
+                    <strong>{item.name}</strong>
+                    {wearStats && <span className="wear">{describeLastWorn(statsFor(wearStats, item.id))}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}

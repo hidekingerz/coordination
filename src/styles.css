@@ -234,3 +234,23 @@ body {
 .outfit-details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
 .outfit-details .reasons { margin-top: 6px; }
 .reasons.warnings { margin: 8px 0 0; }
+
+/* クローゼット (メイン画面) */
+.closet { margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px; }
+.closet-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.closet-head .spacer { flex: 1; }
+.closet-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.closet-tools .search { flex: 1; min-width: 160px; }
+.closet-tabs { display: flex; gap: 4px; overflow-x: auto; white-space: nowrap; border-bottom: 1px solid var(--border); }
+.closet-tab { background: none; border: none; border-bottom: 2px solid transparent; padding: 6px 10px; color: var(--muted); cursor: pointer; font: inherit; font-size: 0.9rem; }
+.closet-tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+.closet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; max-height: 240px; overflow-y: auto; padding: 2px; }
+.closet-tile { display: flex; flex-direction: column; gap: 4px; text-align: left; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 6px; cursor: pointer; color: var(--text); font: inherit; font-size: 0.8rem; }
+.closet-tile:hover { border-color: var(--accent); }
+.closet-tile[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+.closet-tile .item-visual { flex: none; width: 100%; height: 56px; }
+.closet-tile strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.closet-tile .wear { color: var(--muted); font-size: 0.75rem; }
+@media (max-width: 600px) {
+  .closet-grid { grid-template-columns: repeat(3, 1fr); max-height: 300px; }
+}

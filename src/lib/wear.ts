@@ -1,4 +1,5 @@
 import type { ClothingItem } from '../types';
+
 /** 着用履歴。服データ (ClothingItem) とは別に持ち、提案の「鮮度」に使う */
 
 export interface WearEntry {
