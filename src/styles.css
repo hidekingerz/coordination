@@ -225,12 +225,15 @@ body {
 .closet-tab { background: none; border: none; border-bottom: 2px solid transparent; padding: 6px 10px; color: var(--muted); cursor: pointer; font: inherit; font-size: 0.9rem; }
 .closet-tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
 .closet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; max-height: 240px; overflow-y: auto; padding: 2px; }
-.closet-tile { display: flex; flex-direction: column; gap: 4px; text-align: left; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 6px; cursor: pointer; color: var(--text); font: inherit; font-size: 0.8rem; }
+.closet-tile { display: flex; flex-direction: column; gap: 4px; min-width: 0; text-align: left; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 6px; cursor: pointer; color: var(--text); font: inherit; font-size: 0.8rem; }
 .closet-tile:hover { border-color: var(--accent); }
 .closet-tile[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
 .closet-tile .item-visual { flex: none; width: 100%; height: 56px; }
-.closet-tile strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.closet-tile strong { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .closet-tile .wear { color: var(--muted); font-size: 0.75rem; }
 @media (max-width: 600px) {
-  .closet-grid { grid-template-columns: repeat(3, 1fr); max-height: 300px; }
+  .closet-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); max-height: 300px; }
+  /* 4 択のテイストが 375px に収まるよう詰める。収まらなければ折り返す */
+  .segmented { flex-wrap: wrap; max-width: 100%; }
+  .seg { padding: 8px 6px; font-size: 0.8rem; }
 }
