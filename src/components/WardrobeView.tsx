@@ -17,11 +17,13 @@ interface Props {
   onWear: (itemIds: string[], date: string) => void;
   onUnwear: (itemIds: string[], date: string) => void;
   onImportWearLog: (log: WearLog) => void;
+  /** 「← コーデ提案に戻る」 */
+  onBack: () => void;
 }
 
 type SortMode = 'category' | 'unworn' | 'recent';
 
-export function WardrobeView({ wardrobe, wearLog, onChange, onWear, onUnwear, onImportWearLog }: Props) {
+export function WardrobeView({ wardrobe, wearLog, onChange, onWear, onUnwear, onImportWearLog, onBack }: Props) {
   const [editing, setEditing] = useState<ClothingItem | null | 'new'>(null);
   const [filter, setFilter] = useState<Category | 'all'>('all');
   const [brand, setBrand] = useState<string | 'all'>('all');
@@ -105,6 +107,11 @@ export function WardrobeView({ wardrobe, wearLog, onChange, onWear, onUnwear, on
 
   return (
     <section className="wardrobe">
+      <div className="back-row">
+        <button type="button" className="btn" onClick={onBack}>
+          ← コーデ提案に戻る
+        </button>
+      </div>
       <div className="toolbar">
         <button type="button" className="btn primary" onClick={() => setEditing('new')}>
           ＋ アイテムを追加

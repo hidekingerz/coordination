@@ -34,13 +34,7 @@ body {
 .app { max-width: 1080px; margin: 0 auto; padding: 16px; }
 .app-header h1 { margin: 0; font-size: 1.6rem; letter-spacing: 0.02em; }
 .tagline { margin: 4px 0 12px; color: var(--muted); }
-.tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
-.tabs button {
-  background: none; border: none; padding: 10px 14px; font-size: 1rem; color: var(--muted);
-  border-bottom: 2px solid transparent; cursor: pointer;
-}
-.tabs button.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
-.count { background: var(--border); border-radius: 999px; padding: 0 8px; font-size: 0.8rem; margin-left: 4px; }
+.back-row { margin-bottom: 12px; }
 .app-footer { margin-top: 32px; color: var(--muted); font-size: 0.8rem; text-align: center; }
 
 .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
