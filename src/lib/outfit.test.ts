@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { ClothingItem } from '../types';
+import type { ClothingItem, Season } from '../types';
 import { SAMPLE_WARDROBE } from '../data/sample';
 import { buildConditions } from './season';
-import { outfitWarmth, scoreOutfit, suggestOutfits, type Outfit } from './outfit';
+import { fitsConditions, outfitWarmth, scoreOutfit, suggestOutfits, type Outfit } from './outfit';
 
 describe('suggestOutfits', () => {
   it('returns up to the limit, sorted by score', () => {
@@ -357,5 +357,22 @@ describe('diversity when an item is forced (mustInclude)', () => {
     const results = suggestOutfits(wardrobe, { conditions, limit: 5, mustInclude: ['coat-a'] });
     expect(results).toHaveLength(5);
     expect(new Set(results.map(baseKey)).size).toBe(5);
+  });
+});
+
+describe('fitsConditions', () => {
+  const winterMid = buildConditions(new Date('2026-01-15T12:00:00')); // 冬のまん中: acceptableSeasons は winter だけ
+  const earlyMarch = buildConditions(new Date('2026-03-05T12:00:00')); // 春の初め: winter も候補
+  const mk = (seasons: Season[]): ClothingItem => ({ id: 'x', name: 'x', category: 'tops', color: '#000', seasons, warmth: 3, formality: 'casual', tags: [], createdAt: '' });
+
+  it('accepts an item for the current season', () => {
+    expect(fitsConditions(mk(['winter']), winterMid)).toBe(true);
+  });
+  it('accepts an item that only matches a neighbouring acceptable season', () => {
+    expect(fitsConditions(mk(['winter']), earlyMarch)).toBe(true);
+  });
+  it('rejects an item with no acceptable season', () => {
+    expect(fitsConditions(mk(['summer']), winterMid)).toBe(false);
+    expect(fitsConditions(mk(['summer']), earlyMarch)).toBe(false);
   });
 });

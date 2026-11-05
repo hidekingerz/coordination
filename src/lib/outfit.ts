@@ -82,6 +82,14 @@ function seasonFit(item: ClothingItem, c: Conditions): number {
 }
 
 /**
+ * クローゼットの「今の条件に合う服だけ」フィルタの判定。
+ * その日の季節か、境目で許容している隣の季節に着られる服なら true (厚さは見ない)。
+ */
+export function fitsConditions(item: ClothingItem, c: Conditions): boolean {
+  return seasonFit(item, c) > 0;
+}
+
+/**
  * アウターを「一番外の 1 点」と「その下に重ねる中間着」に分ける。
  * 外套があればそれが一番外、なければ最も厚いアウターを一番外とみなす。
  */
