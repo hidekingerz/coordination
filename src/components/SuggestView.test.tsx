@@ -16,13 +16,11 @@ function renderView() {
   return render(<SuggestView wardrobe={[]} wearLog={[]} onWear={() => {}} onUnwear={() => {}} onEdit={() => {}} />);
 }
 
-/** 「条件を絞る」が閉じていれば開く (開いていれば何もしない) */
-const ensureMore = () => {
-  const toggle = screen.getByRole('button', { name: /条件を絞る/ });
-  if (toggle.getAttribute('aria-expanded') !== 'true') fireEvent.click(toggle);
-};
+/** 気温の入力欄。隠れていれば「気温を変える」で開く */
 const tempInput = () => {
-  ensureMore();
+  const existing = screen.queryByPlaceholderText('例: 18') as HTMLInputElement | null;
+  if (existing) return existing;
+  fireEvent.click(screen.getByRole('button', { name: '気温を変える' }));
   return screen.getByPlaceholderText('例: 18') as HTMLInputElement;
 };
 const dateInput = () => document.querySelector('input[type=date]') as HTMLInputElement;
@@ -65,8 +63,9 @@ describe('SuggestView forecast', () => {
   it('shows an error note and leaves the field empty when the fetch fails', async () => {
     getForecast.mockRejectedValue(new Error('offline'));
     renderView();
-    await screen.findByText(/予報を取得できませんでした/);
-    expect(tempInput().value).toBe('');
+    await screen.findByText(/予報を取得できませんでした。気温を入力してください/);
+    // 予報が無いときは「気温を変える」を押さなくても入力欄が開いている
+    expect((screen.getByPlaceholderText('例: 18') as HTMLInputElement).value).toBe('');
   });
 
   it('does not fetch for a date outside the forecast range', async () => {

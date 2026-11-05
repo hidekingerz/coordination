@@ -210,9 +210,7 @@ body {
 .cond-status .location { font-weight: 600; font-size: 0.95rem; }
 .cond-location { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
 .cond-location select { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
-.link.toggle { margin-top: 12px; font-size: 0.9rem; }
-.cond-more { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
-.temp-row { display: flex; align-items: center; gap: 8px; }
+.temp-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; font-size: 0.9rem; }
 .temp-row input { width: 110px; }
 
 /* 結果 */
