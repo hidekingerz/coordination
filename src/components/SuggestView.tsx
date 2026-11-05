@@ -138,6 +138,13 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onCha
   // ---- その他の条件
   const [formality, setFormality] = useState<Formality | ''>('');
   const [mustInclude, setMustInclude] = useState<string[]>([]);
+  // 編集画面で削除・置き換えされて消えた服は「着たい服」から外す (残ると提案が 0 件になる)
+  useEffect(() => {
+    setMustInclude((cur) => {
+      const live = cur.filter((id) => wardrobe.some((i) => i.id === id));
+      return live.length === cur.length ? cur : live;
+    });
+  }, [wardrobe]);
   const [freshness, setFreshness] = useState<FreshnessMode>('balanced');
 
   const wearStats = useMemo(() => buildWearStats(wearLog, dateStr), [wearLog, dateStr]);

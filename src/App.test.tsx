@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { DailyTemperature } from './lib/weather';
 
 const getForecast = vi.fn<(date: Date) => Promise<DailyTemperature>>();
@@ -72,5 +72,9 @@ describe('App single screen', () => {
     fireEvent.click(within(card).getByRole('button', { name: '削除' }));
     fireEvent.click(screen.getByRole('button', { name: '← コーデ提案に戻る' }));
     expect(screen.queryAllByTestId('must-chip')).toHaveLength(0);
+    // 消えた id が裏で効き続けて提案が 0 件になってはいけない (再計算が終わるまで待つ)
+    await waitFor(() => expect(document.querySelector('.outfits')?.getAttribute('aria-busy')).toBe('false'));
+    expect(screen.getAllByRole('article').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/組み合わせを作れませんでした/)).toBeNull();
   });
 });
