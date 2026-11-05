@@ -5,7 +5,7 @@ import { ItemCard } from './ItemCard';
 import { ItemForm } from './ItemForm';
 import { ImportDialog } from './ImportDialog';
 import { exportJson, mergeWardrobe, type MergeMode } from '../lib/storage';
-import { buildWearStats, statsFor, toDateKey, type WearLog } from '../lib/wear';
+import { buildWearStats, compareUnworn, statsFor, toDateKey, type WearLog } from '../lib/wear';
 import { SAMPLE_WARDROBE } from '../data/sample';
 import { brandCounts, filterWardrobe } from '../lib/filter';
 import { knownBrands } from '../lib/brand';
@@ -41,10 +41,8 @@ export function WardrobeView({ wardrobe, wearLog, onChange, onWear, onUnwear, on
     return filterWardrobe(wardrobe, { category: filter, brand: activeBrand, query })
       .sort((a, b) => {
         if (sort === 'unworn') {
-          // 未着用を先頭に、あとは最後に着た日が古い順
-          const da = statsFor(stats, a.id).daysSince ?? Infinity;
-          const db = statsFor(stats, b.id).daysSince ?? Infinity;
-          if (da !== db) return db - da;
+          const u = compareUnworn(stats)(a, b);
+          if (u !== 0) return u;
         } else if (sort === 'recent') {
           const da = statsFor(stats, a.id).daysSince ?? Infinity;
           const db = statsFor(stats, b.id).daysSince ?? Infinity;
