@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Category, ClothingItem } from '../types';
 import { ALL_CATEGORIES, CATEGORY_LABEL } from '../types';
 import type { Conditions } from '../lib/season';
@@ -90,14 +90,32 @@ export function ClosetPanel(p: ClosetPanelProps) {
     jumpIfEmpty(matches(query, false));
   };
 
+  /** タブ列が右にはみ出しているか。スマホで 4 つ目以降のカテゴリが隠れていることを右端のフェードで伝える */
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const [moreRight, setMoreRight] = useState(false);
+  const updateMore = () => {
+    const el = tabsRef.current;
+    if (el) setMoreRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+  };
+  useEffect(() => {
+    updateMore();
+    const el = tabsRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(updateMore);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [open, categories.length]);
+
   const selectedItems = selected.map((id) => wardrobe.find((i) => i.id === id)).filter((i): i is ClothingItem => Boolean(i));
   /** フィルタを外せば出てくる服の数 (全カテゴリ)。0 件表示の逃げ道に使う */
   const hiddenByFilter = fitOnly && visibleAll.length === 0 ? matches(query, false).length : 0;
 
+  /** フィルタか検索が効いている間は全タブを「見えている数/総数」にそろえる (減っていないタブだけ形式が違うと読みにくい) */
+  const narrowing = fitOnly || query.trim() !== '';
   const tabLabel = (c: Category) => {
     const shown = countOf(visibleAll, c);
     const total = totals[c];
-    return `${CATEGORY_LABEL[c]} ${shown < total ? `${shown}/${total}` : total}`;
+    return `${CATEGORY_LABEL[c]} ${narrowing ? `${shown}/${total}` : total}`;
   };
 
   return (
@@ -158,12 +176,14 @@ export function ClosetPanel(p: ClosetPanelProps) {
               </span>
             )}
           </div>
-          <div className="closet-tabs" role="tablist" aria-label="カテゴリ">
-            {categories.map((c) => (
-              <button key={c} type="button" role="tab" className="closet-tab" aria-selected={tab === c} onClick={() => setTab(c)}>
-                {tabLabel(c)}
-              </button>
-            ))}
+          <div className="closet-tabs-wrap" data-more={moreRight}>
+            <div className="closet-tabs" role="tablist" aria-label="カテゴリ" ref={tabsRef} onScroll={updateMore}>
+              {categories.map((c) => (
+                <button key={c} type="button" role="tab" className="closet-tab" aria-selected={tab === c} onClick={() => setTab(c)}>
+                  {tabLabel(c)}
+                </button>
+              ))}
+            </div>
           </div>
           {visible.length === 0 ? (
             <p className="muted">
