@@ -8,6 +8,7 @@ import { buildWearStats, daysBetween, type WearLog } from '../lib/wear';
 import { SuggestConditions, type DateMode, type ForecastState, type LocatingState } from './SuggestConditions';
 import { OutfitCard } from './OutfitCard';
 import { ClosetPanel } from './ClosetPanel';
+import { toggleMustInclude } from '../lib/selection';
 import { ImportDialog } from './ImportDialog';
 import { mergeWardrobe, type MergeMode } from '../lib/storage';
 import { SAMPLE_WARDROBE } from '../data/sample';
@@ -246,7 +247,7 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onCha
         conditions={conditions}
         wearStats={wearLog.length ? wearStats : undefined}
         selected={mustInclude}
-        onToggle={(id) => setMustInclude((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))}
+        onToggle={(id) => setMustInclude((cur) => toggleMustInclude(cur, id, wardrobe))}
         onClear={() => setMustInclude([])}
         onEdit={onEdit}
         onImport={() => setImporting(true)}
@@ -264,7 +265,7 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onCha
       {results && results.length === 0 && (
         <p className="empty">
           {hasMust
-            ? '選んだアイテムを同時に着る組み合わせが作れませんでした。同じカテゴリを複数選んでいないか確認し、指定を減らしてください。'
+            ? '選んだアイテムを同時に着る組み合わせが作れませんでした。ワンピースとトップスのように両立しない指定があれば減らしてください。'
             : page > 0
               ? 'これ以上の案はありません。'
               : '組み合わせを作れませんでした。トップスとボトムス（またはワンピース）がそれぞれ1点以上必要です。'}
