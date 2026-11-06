@@ -152,6 +152,11 @@ export function ClosetPanel(p: ClosetPanelProps) {
             <button type="button" className={`chip toggle ${fitOnly ? 'on' : ''}`} aria-pressed={fitOnly} onClick={() => setFitOnly((v) => !v)}>
               今の条件に合う服だけ
             </button>
+            {wearStats && (
+              <span className="closet-order muted" title="未着用を先頭に、最後に着た日が古い順。「今日着た」を押すと並びが変わります">
+                着ていない順
+              </span>
+            )}
           </div>
           <div className="closet-tabs" role="tablist" aria-label="カテゴリ">
             {categories.map((c) => (

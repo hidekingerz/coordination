@@ -229,6 +229,8 @@ body {
 .closet-head .spacer { flex: 1; }
 .closet-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .closet-tools .search { flex: 1; min-width: 160px; }
+/* 並び順の表示。履歴があるときだけ出す (並びが履歴で変わることを伝える) */
+.closet-order { margin-left: auto; font-size: 0.8rem; white-space: nowrap; }
 .closet-tabs { display: flex; gap: 4px; overflow-x: auto; white-space: nowrap; border-bottom: 1px solid var(--border); }
 .closet-tab { background: none; border: none; border-bottom: 2px solid transparent; padding: 6px 10px; color: var(--muted); cursor: pointer; font: inherit; font-size: 0.9rem; }
 .closet-tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
