@@ -227,3 +227,14 @@ describe('ClosetPanel filter chip', () => {
     expect(filterChip().classList.contains('on')).toBe(false);
   });
 });
+
+describe('ClosetPanel sort label', () => {
+  it('names the order when wear stats drive it, and stays silent without history', () => {
+    renderOpen();
+    expect(screen.queryByText('着ていない順')).toBeNull();
+    cleanup();
+    localStorage.clear(); // 開いた状態を記憶しているので、次の描画でも「クローゼットから選ぶ」から開けるように戻す
+    renderOpen({ wearStats: buildWearStats([{ itemId: 's-outer-1', date: '2026-01-14' }], '2026-01-15') });
+    expect(screen.getByText('着ていない順')).toBeTruthy();
+  });
+});
