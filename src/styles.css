@@ -195,7 +195,8 @@ body {
 /* 「このアイテムを着たい」のチップとピッカー */
 .must-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .must-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 2px 4px 2px 8px; font-size: 0.85rem; }
-.must-remove { border: none; background: none; color: var(--muted); cursor: pointer; font-size: 1rem; line-height: 1; padding: 0 4px; border-radius: 50%; }
+/* × は押し幅を 28px 確保する (文字だけだと 16px 角で押しにくい) */
+.must-remove { border: none; background: none; color: var(--muted); cursor: pointer; font-size: 1rem; line-height: 1; padding: 0; width: 28px; height: 28px; margin: -4px 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; }
 .must-remove:hover { color: var(--danger); }
 
 /* 日付のショートカット */
@@ -241,6 +242,9 @@ body {
 .closet-tile { display: flex; flex-direction: column; gap: 4px; min-width: 0; text-align: left; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 6px; cursor: pointer; color: var(--text); font: inherit; font-size: 0.8rem; }
 .closet-tile:hover { border-color: var(--accent); }
 .closet-tile[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+/* 選択中は枠だけだとネイビーやグレーの面で hover と区別がつかないので、角に ✓ を出す */
+.closet-tile { position: relative; }
+.closet-tile[aria-pressed="true"]::after { content: "✓"; position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: var(--accent-text); font-size: 0.8rem; font-weight: 700; line-height: 20px; text-align: center; }
 .closet-tile .item-visual { flex: none; width: 100%; height: 56px; }
 /* 名前は 2 行まで見せる。1 行だと「ベージュの…」で何の服か分からない */
 .closet-tile .tile-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; min-width: 0; overflow: hidden; overflow-wrap: anywhere; line-height: 1.3; }

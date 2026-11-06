@@ -62,7 +62,8 @@ describe('always-visible conditions', () => {
     await screen.findByText(/最高 20℃ \/ 最低 12℃/);
     const status = screen.getByTestId('cond-status');
     expect(status.textContent).toContain('東京');
-    expect(status.textContent).toMatch(/目安の厚さ: 3/);
+    expect(status.textContent).toContain('ふつうの厚さでよさそう'); // 数字と入れ子括弧の代わりに一言で
+    expect(screen.getByText('ふつうの厚さでよさそう').getAttribute('title')).toBe('目安の厚さ 3/5 (春秋 (ふつう))');
     expect(screen.queryByRole('button', { name: /条件を絞る/ })).toBeNull();
     expect(screen.queryByPlaceholderText('例: 18')).toBeNull();
     expect(screen.queryByLabelText(/予報の地点/)).toBeNull();
