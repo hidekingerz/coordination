@@ -66,6 +66,10 @@ body {
 }
 .chip input { display: none; }
 .chip.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+/* 単独のオン/オフは塗りつぶさず、チェック印で状態を見せる (塗りつぶすと主ボタンに見える) */
+.chip.toggle::before { content: "☐"; margin-right: 6px; }
+.chip.toggle.on { background: color-mix(in srgb, var(--accent) 12%, var(--card)); color: var(--text); border-color: var(--accent); }
+.chip.toggle.on::before { content: "✓"; color: var(--accent); font-weight: 700; }
 
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
 .item-card { display: flex; gap: 10px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; }

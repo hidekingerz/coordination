@@ -217,3 +217,13 @@ describe('ClosetPanel tile name', () => {
     expect(tile.querySelector('strong')?.className).toBe('tile-name');
   });
 });
+
+describe('ClosetPanel filter chip', () => {
+  it('is styled as an on/off toggle, not a filled primary button', () => {
+    renderOpen();
+    expect(filterChip().classList.contains('toggle')).toBe(true);
+    expect(filterChip().classList.contains('on')).toBe(true);
+    fireEvent.click(filterChip());
+    expect(filterChip().classList.contains('on')).toBe(false);
+  });
+});

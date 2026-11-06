@@ -149,7 +149,7 @@ export function ClosetPanel(p: ClosetPanelProps) {
         <>
           <div className="closet-tools">
             <input className="search" placeholder="名前・ブランド・タグで検索" value={query} onChange={(e) => changeQuery(e.target.value)} />
-            <button type="button" className={`chip ${fitOnly ? 'on' : ''}`} aria-pressed={fitOnly} onClick={() => setFitOnly((v) => !v)}>
+            <button type="button" className={`chip toggle ${fitOnly ? 'on' : ''}`} aria-pressed={fitOnly} onClick={() => setFitOnly((v) => !v)}>
               今の条件に合う服だけ
             </button>
           </div>
