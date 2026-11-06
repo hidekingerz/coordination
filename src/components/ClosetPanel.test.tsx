@@ -41,7 +41,7 @@ describe('ClosetPanel tabs and filter', () => {
   it('shows one tab per non-empty category with filtered/total counts, filter on by default', () => {
     renderOpen();
     expect(filterChip().getAttribute('aria-pressed')).toBe('true');
-    expect(tabs()).toEqual(['アウター 3/5', 'トップス 3/9', 'ボトムス 3/6', 'ワンピース / セットアップ 1', 'シューズ 3/5', '小物 3/4']);
+    expect(tabs()).toEqual(['アウター 3/5', 'トップス 3/9', 'ボトムス 3/6', 'ワンピース / セットアップ 1/1', 'シューズ 3/5', '小物 3/4']);
     expect(screen.getByRole('tab', { name: 'アウター 3/5' }).getAttribute('aria-selected')).toBe('true');
     expect(tiles()).toEqual(['ネイビーのステンカラーコート を選択', 'ブラックのダウンジャケット を選択', 'グレーのカーディガン を選択']);
   });
@@ -73,8 +73,8 @@ describe('ClosetPanel tabs and filter', () => {
       for (let k = 0; k < n; k++) big.push({ ...SAMPLE_WARDROBE[0], id: `${cat}-${k}`, name: `${cat} ${k}`, category: cat as ClothingItem['category'] });
     }
     renderOpen({ wardrobe: big });
-    expect(tabs()).toEqual(['アウター 20', 'トップス 45', 'ボトムス 30', 'シューズ 20', '小物 35']);
-    fireEvent.click(screen.getByRole('tab', { name: 'トップス 45' }));
+    expect(tabs()).toEqual(['アウター 20/20', 'トップス 45/45', 'ボトムス 30/30', 'シューズ 20/20', '小物 35/35']);
+    fireEvent.click(screen.getByRole('tab', { name: 'トップス 45/45' }));
     expect(document.querySelectorAll('.closet-grid .closet-tile')).toHaveLength(45);
   });
 });
@@ -236,5 +236,45 @@ describe('ClosetPanel sort label', () => {
     localStorage.clear(); // 開いた状態を記憶しているので、次の描画でも「クローゼットから選ぶ」から開けるように戻す
     renderOpen({ wearStats: buildWearStats([{ itemId: 's-outer-1', date: '2026-01-14' }], '2026-01-15') });
     expect(screen.getByText('着ていない順')).toBeTruthy();
+  });
+});
+
+describe('ClosetPanel tab count format', () => {
+  it('uses shown/total on every tab while a filter or search is active, and plain totals otherwise', () => {
+    renderOpen();
+    expect(tabs()).toContain('ワンピース / セットアップ 1/1'); // 減っていなくても分数にそろえる
+    fireEvent.click(filterChip());
+    expect(tabs()).toEqual(['アウター 5', 'トップス 9', 'ボトムス 6', 'ワンピース / セットアップ 1', 'シューズ 5', '小物 4']);
+    fireEvent.change(search(), { target: { value: 'セットアップ' } });
+    expect(tabs()).toContain('ワンピース / セットアップ 1/1');
+    expect(tabs()[0]).toBe('アウター 0/5');
+  });
+});
+
+describe('ClosetPanel tab overflow hint', () => {
+  const widths = (scroll: number, client: number) => {
+    Object.defineProperty(HTMLElement.prototype, 'scrollWidth', { configurable: true, get: () => scroll });
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, get: () => client });
+  };
+  afterEach(() => {
+    delete (HTMLElement.prototype as unknown as Record<string, unknown>).scrollWidth;
+    delete (HTMLElement.prototype as unknown as Record<string, unknown>).clientWidth;
+  });
+
+  it('marks the tab row when it overflows to the right, and clears the mark once scrolled to the end', () => {
+    widths(600, 320); // jsdom は寸法を持たないので、はみ出している状態を作る
+    renderOpen();
+    const wrap = screen.getByRole('tablist').parentElement!;
+    expect(wrap.getAttribute('data-more')).toBe('true');
+    const list = screen.getByRole('tablist');
+    Object.defineProperty(list, 'scrollLeft', { configurable: true, value: 280 });
+    fireEvent.scroll(list);
+    expect(wrap.getAttribute('data-more')).toBe('false');
+  });
+
+  it('shows no mark when every tab fits', () => {
+    widths(300, 320);
+    renderOpen();
+    expect(screen.getByRole('tablist').parentElement!.getAttribute('data-more')).toBe('false');
   });
 });

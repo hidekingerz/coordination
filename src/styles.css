@@ -231,6 +231,9 @@ body {
 .closet-tools .search { flex: 1; min-width: 160px; }
 /* 並び順の表示。履歴があるときだけ出す (並びが履歴で変わることを伝える) */
 .closet-order { margin-left: auto; font-size: 0.8rem; white-space: nowrap; }
+/* タブ列が右に続いているときだけ右端をフェードさせ、隠れたカテゴリがあると分かるようにする */
+.closet-tabs-wrap { position: relative; }
+.closet-tabs-wrap[data-more="true"]::after { content: ""; position: absolute; top: 0; right: 0; bottom: 1px; width: 48px; pointer-events: none; background: linear-gradient(to right, transparent, var(--card)); }
 .closet-tabs { display: flex; gap: 4px; overflow-x: auto; white-space: nowrap; border-bottom: 1px solid var(--border); }
 .closet-tab { background: none; border: none; border-bottom: 2px solid transparent; padding: 6px 10px; color: var(--muted); cursor: pointer; font: inherit; font-size: 0.9rem; }
 .closet-tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
