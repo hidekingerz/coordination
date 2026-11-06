@@ -221,6 +221,22 @@ describe('SuggestView must-include conflicts', () => {
     await waitFor(() => expect(document.querySelector('.outfits')?.getAttribute('aria-busy')).toBe('false'));
     expect(screen.queryByText(/選んだアイテムを同時に着る組み合わせ/)).toBeNull();
   });
+
+  it('keeps a cardigan and a coat together so the layered outfit is suggested', async () => {
+    getForecast.mockResolvedValue({ max: 20, min: 12 });
+    const { SAMPLE_WARDROBE } = await import('../data/sample');
+    render(<SuggestView wardrobe={SAMPLE_WARDROBE} wearLog={[]} onWear={() => {}} onUnwear={() => {}} onEdit={() => {}} onChangeWardrobe={() => {}} onImportWearLog={() => {}} />);
+    await waitFor(() => expect(tempInput().value).toBe('20'));
+    openCloset();
+    fireEvent.click(screen.getByRole('button', { name: '今の条件に合う服だけ' }));
+    fireEvent.click(screen.getByRole('button', { name: 'グレーのカーディガン を選択' }));
+    fireEvent.click(screen.getByRole('button', { name: 'ネイビーのステンカラーコート を選択' }));
+    expect(screen.getAllByTestId('must-chip')).toHaveLength(2);
+    await waitFor(() => expect(document.querySelector('.outfits')?.getAttribute('aria-busy')).toBe('false'));
+    const first = document.querySelector('.outfit')!.textContent ?? '';
+    expect(first).toContain('グレーのカーディガン');
+    expect(first).toContain('ネイビーのステンカラーコート');
+  });
 });
 
 describe('SuggestView date shortcuts', () => {
