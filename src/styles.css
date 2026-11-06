@@ -77,10 +77,11 @@ body {
 .item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .item-title { display: flex; flex-direction: column; }
 .item-category { font-size: 0.75rem; color: var(--muted); }
-.item-brand { color: var(--accent); }
+/* ブランド名とタグは説明なので、押せる青 (.link) とは分けて落ち着いた色にする */
+.item-brand { color: var(--muted); font-weight: 600; }
 .item-title strong { font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; }
 .item-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 0.8rem; color: var(--muted); }
-.item-meta .tags { color: var(--accent); }
+.item-meta .tags { color: var(--muted); }
 .item-actions { display: flex; gap: 6px; margin-top: auto; }
 .swatch { display: inline-block; border-radius: 50%; border: 1px solid rgba(0,0,0,0.15); vertical-align: middle; }
 
@@ -115,7 +116,7 @@ body {
 
 .outfits { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; margin-top: 16px; }
 .outfit header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.outfit .rank { font-weight: 700; color: var(--accent); font-size: 1.1rem; }
+.outfit .rank { font-weight: 700; color: var(--text); font-size: 1.1rem; }
 .outfit .palette { display: flex; gap: 4px; flex: 1; }
 .outfit .score { font-weight: 700; font-size: 1.1rem; }
 .outfit-main { display: flex; gap: 12px; align-items: flex-start; }
@@ -159,7 +160,9 @@ body {
 .warnings { font-size: 0.85rem; color: var(--warn); }
 .warnings p { margin: 0 0 4px; }
 .warnings ul { margin: 0; padding-left: 18px; }
-.link { background: none; border: none; color: var(--accent); cursor: pointer; padding: 0; font-size: 0.85rem; }
+/* 押せる文字リンク。説明文と区別できるよう下線を付ける */
+.link { background: none; border: none; color: var(--accent); cursor: pointer; padding: 0; font-size: 0.85rem; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.link:hover { text-decoration-thickness: 2px; }
 .import-preview .chips label { cursor: pointer; }
 
 /* 着用履歴 */
