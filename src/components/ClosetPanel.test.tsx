@@ -131,7 +131,7 @@ describe('ClosetPanel selection', () => {
   });
 
   it('shows 指定なし and no clear button when nothing is selected', () => {
-    renderOpen();
+    renderPanel(); // 閉じているときの表示
     expect(screen.getByText('指定なし')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'すべて外す' })).toBeNull();
   });
@@ -276,5 +276,22 @@ describe('ClosetPanel tab overflow hint', () => {
     widths(300, 320);
     renderOpen();
     expect(screen.getByRole('tablist').parentElement!.getAttribute('data-more')).toBe('false');
+  });
+});
+
+describe('ClosetPanel must-include hint', () => {
+  it('tells how to pick while the closet is open and nothing is selected, and keeps 指定なし when collapsed', () => {
+    renderOpen();
+    expect(screen.queryByText('指定なし')).toBeNull();
+    expect(screen.getByText('下の服をタップすると、その服を使ったコーデを提案します')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'クローゼットを閉じる' }));
+    expect(screen.getByText('指定なし')).toBeTruthy();
+    expect(screen.queryByText(/下の服をタップ/)).toBeNull();
+  });
+
+  it('shows neither text once something is selected', () => {
+    renderOpen({ selected: ['s-outer-2'] });
+    expect(screen.queryByText('指定なし')).toBeNull();
+    expect(screen.queryByText(/下の服をタップ/)).toBeNull();
   });
 });

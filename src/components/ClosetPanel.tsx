@@ -123,7 +123,8 @@ export function ClosetPanel(p: ClosetPanelProps) {
       <div className="closet-head">
         <span>着たい服:</span>
         {selectedItems.length === 0 ? (
-          <span className="muted">指定なし</span>
+          // 開いているときは「押せる」ことを伝える。閉じているときは短く「指定なし」
+          <span className="muted">{open && wardrobe.length > 0 ? '下の服をタップすると、その服を使ったコーデを提案します' : '指定なし'}</span>
         ) : (
           selectedItems.map((i) => (
             <span key={i.id} className="must-chip" data-testid="must-chip">
