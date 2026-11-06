@@ -27,7 +27,7 @@ describe('App single screen', () => {
     expect(document.querySelector('nav.tabs')).toBeNull();
     expect(screen.queryByRole('button', { name: 'コーデ提案' })).toBeNull();
     expect(screen.getByTestId('cond-status')).toBeTruthy();
-    expect(screen.getAllByRole('tab').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'クローゼットから選ぶ' })).toBeTruthy();
     await screen.findAllByRole('article');
   });
 
@@ -42,6 +42,7 @@ describe('App single screen', () => {
     render(<App />);
     await screen.findAllByRole('article');
     fireEvent.click(screen.getByRole('button', { name: '明日' }));
+    fireEvent.click(screen.getByRole('button', { name: 'クローゼットから選ぶ' }));
     fireEvent.click(screen.getByRole('button', { name: '今の条件に合う服だけ' }));
     fireEvent.click(screen.getByRole('tab', { name: /シューズ/ }));
     fireEvent.click(screen.getByRole('button', { name: 'ブラックのローファー を選択' }));
@@ -62,6 +63,7 @@ describe('App single screen', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<App />);
     await screen.findAllByRole('article');
+    fireEvent.click(screen.getByRole('button', { name: 'クローゼットから選ぶ' }));
     fireEvent.click(screen.getByRole('button', { name: '今の条件に合う服だけ' }));
     fireEvent.click(screen.getByRole('tab', { name: /シューズ/ }));
     fireEvent.click(screen.getByRole('button', { name: 'ブラックのローファー を選択' }));

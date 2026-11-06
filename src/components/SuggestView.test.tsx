@@ -16,6 +16,7 @@ function renderView() {
   return render(<SuggestView wardrobe={[]} wearLog={[]} onWear={() => {}} onUnwear={() => {}} onEdit={() => {}} onChangeWardrobe={() => {}} onImportWearLog={() => {}} />);
 }
 
+const openCloset = () => fireEvent.click(screen.getByRole('button', { name: 'クローゼットから選ぶ' }));
 /** 気温の入力欄。隠れていれば「気温を変える」で開く */
 const tempInput = () => {
   const existing = screen.queryByPlaceholderText('例: 18') as HTMLInputElement | null;
@@ -148,6 +149,7 @@ describe('SuggestView closet tiles', () => {
     await waitFor(() => expect(tempInput().value).toBe('20'));
     expect(screen.queryByRole('button', { name: 'アイテムを選ぶ' })).toBeNull();
 
+    openCloset();
     fireEvent.click(screen.getByRole('button', { name: '今の条件に合う服だけ' })); // 季節に左右されないよう全件表示
     fireEvent.click(screen.getByRole('tab', { name: /トップス/ }));
     fireEvent.click(screen.getByRole('button', { name: 'ライトブルーのオックスフォードシャツ を選択' }));
@@ -173,6 +175,7 @@ describe('SuggestView closet tiles', () => {
     render(<SuggestView wardrobe={SAMPLE_WARDROBE} wearLog={[]} onWear={() => {}} onUnwear={() => {}} onEdit={() => {}} onChangeWardrobe={() => {}} onImportWearLog={() => {}} />);
     await waitFor(() => expect(tempInput().value).toBe('20'));
     await screen.findAllByRole('article');
+    openCloset();
     fireEvent.click(screen.getByRole('button', { name: '今の条件に合う服だけ' }));
     fireEvent.click(screen.getByRole('tab', { name: /トップス/ }));
     fireEvent.click(screen.getByRole('button', { name: '白の無地Tシャツ を選択' }));
@@ -190,6 +193,7 @@ describe('SuggestView must-include conflicts', () => {
     const { SAMPLE_WARDROBE } = await import('../data/sample');
     render(<SuggestView wardrobe={SAMPLE_WARDROBE} wearLog={[]} onWear={() => {}} onUnwear={() => {}} onEdit={() => {}} onChangeWardrobe={() => {}} onImportWearLog={() => {}} />);
     await waitFor(() => expect(tempInput().value).toBe('20'));
+    openCloset();
     fireEvent.click(screen.getByRole('button', { name: '今の条件に合う服だけ' }));
     fireEvent.click(screen.getByRole('tab', { name: /トップス/ }));
     fireEvent.click(screen.getByRole('button', { name: '白の無地Tシャツ を選択' }));
