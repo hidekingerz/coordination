@@ -208,3 +208,12 @@ describe('ClosetPanel collapsed by default', () => {
     expect(screen.getByRole('button', { name: 'サンプルデータを読み込む' })).toBeTruthy();
   });
 });
+
+describe('ClosetPanel tile name', () => {
+  it('carries the full name in title so a clipped name can still be read', () => {
+    renderOpen();
+    const tile = screen.getByRole('button', { name: 'ネイビーのステンカラーコート を選択' });
+    expect(tile.getAttribute('title')).toBe('ネイビーのステンカラーコート');
+    expect(tile.querySelector('strong')?.className).toBe('tile-name');
+  });
+});
