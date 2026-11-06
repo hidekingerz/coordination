@@ -167,7 +167,8 @@ body {
 
 /* 着用履歴 */
 .wear { border-radius: 999px; padding: 0 8px; border: 1px solid var(--border); font-size: 0.75rem; }
-.wear.never { color: var(--accent); border-color: var(--accent); }
+/* 「未着用」も説明なので、押せる青とは分けて灰色にする */
+.wear.never { color: var(--muted); }
 .wear.recent { color: var(--muted); }
 .wear.stale { color: var(--warn); border-color: var(--warn); }
 .hint { margin: -6px 0 12px; color: var(--muted); font-size: 0.9rem; }
