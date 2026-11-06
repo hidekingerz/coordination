@@ -5,7 +5,7 @@ import { ItemCard } from './ItemCard';
 import { ItemForm } from './ItemForm';
 import { ImportDialog } from './ImportDialog';
 import { exportJson, mergeWardrobe, type MergeMode } from '../lib/storage';
-import { buildWearStats, statsFor, toDateKey, type WearLog } from '../lib/wear';
+import { buildWearStats, compareUnworn, statsFor, toDateKey, type WearLog } from '../lib/wear';
 import { SAMPLE_WARDROBE } from '../data/sample';
 import { brandCounts, filterWardrobe } from '../lib/filter';
 import { knownBrands } from '../lib/brand';
@@ -17,11 +17,13 @@ interface Props {
   onWear: (itemIds: string[], date: string) => void;
   onUnwear: (itemIds: string[], date: string) => void;
   onImportWearLog: (log: WearLog) => void;
+  /** 「← コーデ提案に戻る」 */
+  onBack: () => void;
 }
 
 type SortMode = 'category' | 'unworn' | 'recent';
 
-export function WardrobeView({ wardrobe, wearLog, onChange, onWear, onUnwear, onImportWearLog }: Props) {
+export function WardrobeView({ wardrobe, wearLog, onChange, onWear, onUnwear, onImportWearLog, onBack }: Props) {
   const [editing, setEditing] = useState<ClothingItem | null | 'new'>(null);
   const [filter, setFilter] = useState<Category | 'all'>('all');
   const [brand, setBrand] = useState<string | 'all'>('all');
@@ -41,10 +43,8 @@ export function WardrobeView({ wardrobe, wearLog, onChange, onWear, onUnwear, on
     return filterWardrobe(wardrobe, { category: filter, brand: activeBrand, query })
       .sort((a, b) => {
         if (sort === 'unworn') {
-          // 未着用を先頭に、あとは最後に着た日が古い順
-          const da = statsFor(stats, a.id).daysSince ?? Infinity;
-          const db = statsFor(stats, b.id).daysSince ?? Infinity;
-          if (da !== db) return db - da;
+          const u = compareUnworn(stats)(a, b);
+          if (u !== 0) return u;
         } else if (sort === 'recent') {
           const da = statsFor(stats, a.id).daysSince ?? Infinity;
           const db = statsFor(stats, b.id).daysSince ?? Infinity;
@@ -107,6 +107,11 @@ export function WardrobeView({ wardrobe, wearLog, onChange, onWear, onUnwear, on
 
   return (
     <section className="wardrobe">
+      <div className="back-row">
+        <button type="button" className="btn" onClick={onBack}>
+          ← コーデ提案に戻る
+        </button>
+      </div>
       <div className="toolbar">
         <button type="button" className="btn primary" onClick={() => setEditing('new')}>
           ＋ アイテムを追加

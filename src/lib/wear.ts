@@ -1,3 +1,5 @@
+import type { ClothingItem } from '../types';
+
 /** 着用履歴。服データ (ClothingItem) とは別に持ち、提案の「鮮度」に使う */
 
 export interface WearEntry {
@@ -111,6 +113,20 @@ export function buildWearStats(log: WearLog, todayKey: string): WearStatsMap {
 
 export function statsFor(stats: WearStatsMap | undefined, itemId: string): WearStats {
   return stats?.get(itemId) ?? { lastWorn: null, count: 0, daysSince: null };
+}
+
+/**
+ * 「最近着ていない順」の比較関数。未着用を先頭に、あとは最後に着た日が古い順。
+ * 同点は 0 を返すので、安定ソートなら配列順が残り、呼び出し側で別の並びを足せる。
+ */
+export function compareUnworn(stats: WearStatsMap): (a: ClothingItem, b: ClothingItem) => number {
+  const days = (i: ClothingItem) => statsFor(stats, i.id).daysSince ?? Infinity;
+  return (a, b) => {
+    const da = days(a);
+    const db = days(b);
+    if (da === db) return 0;
+    return db - da;
+  };
 }
 
 /** 着てから日が浅いほど低く、2 週間以上空く (または未着用) と 1 になる */

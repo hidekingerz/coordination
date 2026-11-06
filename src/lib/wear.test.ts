@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import type { ClothingItem } from '../types';
 import {
   buildWearStats,
+  compareUnworn,
   describeLastWorn,
   freshnessScore,
   mergeWearLogs,
@@ -62,5 +64,23 @@ describe('buildWearStats / freshness', () => {
     expect(outfitWornWithin(l, 'a+b', '2026-10-03', 7)).toBe(true);
     expect(outfitWornWithin(l, 'a+b', '2026-10-20', 7)).toBe(false);
     expect(outfitWornWithin(l, 'a+c', '2026-10-03', 7)).toBe(false);
+  });
+});
+
+describe('compareUnworn', () => {
+  const mk = (id: string): ClothingItem => ({ id, name: id, category: 'tops', color: '#000', seasons: ['winter'], warmth: 3, formality: 'casual', tags: [], createdAt: '' });
+  const items = [mk('worn-1d'), mk('never-a'), mk('worn-14d'), mk('never-b')];
+  const stats = buildWearStats(
+    [{ itemId: 'worn-1d', date: '2026-01-14' }, { itemId: 'worn-14d', date: '2026-01-01' }],
+    '2026-01-15',
+  );
+
+  it('puts never-worn items first, then the longest-unworn, keeping array order on ties', () => {
+    const sorted = [...items].sort(compareUnworn(stats));
+    expect(sorted.map((i) => i.id)).toEqual(['never-a', 'never-b', 'worn-14d', 'worn-1d']);
+  });
+
+  it('returns 0 for two never-worn items so callers can add their own tie-break', () => {
+    expect(compareUnworn(stats)(mk('p'), mk('q'))).toBe(0);
   });
 });

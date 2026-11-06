@@ -21,7 +21,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 function renderView(wearLog: WearLog = []) {
-  return render(<SuggestView wardrobe={SAMPLE_WARDROBE} wearLog={wearLog} onWear={() => {}} onUnwear={() => {}} />);
+  return render(<SuggestView wardrobe={SAMPLE_WARDROBE} wearLog={wearLog} onWear={() => {}} onUnwear={() => {}} onEdit={() => {}} onChangeWardrobe={() => {}} onImportWearLog={() => {}} />);
 }
 const articlesText = () => screen.getAllByRole('article').map((a) => a.textContent ?? '');
 
@@ -56,16 +56,32 @@ describe('auto suggestions', () => {
   });
 });
 
-describe('two-tier conditions', () => {
-  it('shows a status line with location, forecast, season and warmth, and hides the fine-tuning by default', async () => {
+describe('always-visible conditions', () => {
+  it('shows the status line and keeps the temperature input behind 気温を変える, with no fold', async () => {
     renderView();
     await screen.findByText(/最高 20℃ \/ 最低 12℃/);
     const status = screen.getByTestId('cond-status');
     expect(status.textContent).toContain('東京');
     expect(status.textContent).toMatch(/目安の厚さ: 3/);
+    expect(screen.queryByRole('button', { name: /条件を絞る/ })).toBeNull();
     expect(screen.queryByPlaceholderText('例: 18')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'アイテムを選ぶ' })).toBeNull();
     expect(screen.queryByLabelText(/予報の地点/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '気温を変える' }));
+    const temp = screen.getByPlaceholderText('例: 18') as HTMLInputElement;
+    expect(temp.value).toBe('20');
+    expect(screen.queryByRole('button', { name: '予報に戻す' })).toBeNull();
+    fireEvent.change(temp, { target: { value: '12' } });
+    expect(status.textContent).toContain('12℃ (手入力)');
+    fireEvent.click(screen.getByRole('button', { name: '予報に戻す' }));
+    expect((screen.getByPlaceholderText('例: 18') as HTMLInputElement).value).toBe('20');
+    expect(screen.queryByRole('button', { name: '予報に戻す' })).toBeNull();
+  });
+
+  it('opens the temperature input by itself when the forecast is unavailable', async () => {
+    getForecast.mockRejectedValue(new Error('offline'));
+    renderView();
+    await screen.findByText(/気温を入力してください/);
+    expect(screen.getByPlaceholderText('例: 18')).toBeTruthy();
   });
 
   it('opens the location choices from the status line', async () => {
@@ -77,43 +93,13 @@ describe('two-tier conditions', () => {
     await screen.findByText(/大阪/);
   });
 
-  it('expands the fine-tuning panel and counts active overrides in the toggle', async () => {
+  it('shows the wear-history segment without any toggle, only when there is history', async () => {
     renderView();
     await screen.findAllByRole('article');
-    const toggle = screen.getByRole('button', { name: /条件を絞る/ });
-    expect(toggle.textContent).not.toMatch(/\(\d\)/);
-    fireEvent.click(toggle);
-    const temp = screen.getByPlaceholderText('例: 18') as HTMLInputElement;
-    fireEvent.change(temp, { target: { value: '12' } });
-    expect(screen.getByRole('button', { name: /条件を絞る/ }).textContent).toMatch(/\(1\)/);
-    fireEvent.click(screen.getByRole('button', { name: 'アイテムを選ぶ' }));
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /白の無地Tシャツ/ }));
-    fireEvent.click(screen.getByRole('button', { name: '決定' }));
-    expect(screen.getByRole('button', { name: /条件を絞る/ }).textContent).toMatch(/\(2\)/);
-  });
-
-  it('lets the user return a manually typed temperature to the forecast', async () => {
-    renderView();
-    await screen.findByText(/最高 20℃/);
-    fireEvent.click(screen.getByRole('button', { name: /条件を絞る/ }));
-    const temp = screen.getByPlaceholderText('例: 18') as HTMLInputElement;
-    expect(temp.value).toBe('20');
-    expect(screen.queryByRole('button', { name: '予報に戻す' })).toBeNull();
-    fireEvent.change(temp, { target: { value: '12' } });
-    fireEvent.click(screen.getByRole('button', { name: '予報に戻す' }));
-    expect((screen.getByPlaceholderText('例: 18') as HTMLInputElement).value).toBe('20');
-    expect(screen.queryByRole('button', { name: '予報に戻す' })).toBeNull();
-  });
-
-  it('shows the wear-history segment only when there is history', async () => {
-    renderView();
-    await screen.findAllByRole('article');
-    fireEvent.click(screen.getByRole('button', { name: /条件を絞る/ }));
     expect(screen.queryByRole('button', { name: '着ていない服を優先' })).toBeNull();
     cleanup();
     renderView([{ itemId: 's-tops-1', date: '2026-10-01' }, { itemId: 's-bottoms-1', date: '2026-10-01' }]);
     await screen.findAllByRole('article');
-    fireEvent.click(screen.getByRole('button', { name: /条件を絞る/ }));
     const prefer = screen.getByRole('button', { name: '着ていない服を優先' });
     fireEvent.click(prefer);
     expect(prefer.getAttribute('aria-pressed')).toBe('true');

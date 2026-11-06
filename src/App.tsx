@@ -5,11 +5,12 @@ import { loadWearLog, mergeWearLogs, pruneWearLog, recordWear, removeWear, saveW
 import { WardrobeView } from './components/WardrobeView';
 import { SuggestView } from './components/SuggestView';
 
-type Tab = 'suggest' | 'wardrobe';
+/** メイン画面 (条件・クローゼット・提案) と、クローゼットの編集画面 */
+type View = 'main' | 'edit';
 
 export default function App() {
   const [wardrobe, setWardrobe] = useState<ClothingItem[]>(() => loadWardrobe());
-  const [tab, setTab] = useState<Tab>(() => (loadWardrobe().length ? 'suggest' : 'wardrobe'));
+  const [view, setView] = useState<View>('main');
   const [wearLog, setWearLog] = useState<WearLog>(() => loadWearLog());
 
   useEffect(() => {
@@ -36,19 +37,21 @@ export default function App() {
       <header className="app-header">
         <h1>Coordination</h1>
         <p className="tagline">手持ちの服から、今日の季節と色味に合うコーデを提案します</p>
-        <nav className="tabs">
-          <button type="button" className={tab === 'suggest' ? 'on' : ''} onClick={() => setTab('suggest')}>
-            コーデ提案
-          </button>
-          <button type="button" className={tab === 'wardrobe' ? 'on' : ''} onClick={() => setTab('wardrobe')}>
-            クローゼット <span className="count">{wardrobe.length}</span>
-          </button>
-        </nav>
       </header>
       <main>
-        {tab === 'suggest' ? (
-          <SuggestView wardrobe={wardrobe} wearLog={wearLog} onWear={wear} onUnwear={unwear} />
-        ) : (
+        {/* 編集画面へ行っても条件や着たい服が消えないよう、メイン画面は隠すだけにする */}
+        <div hidden={view !== 'main'}>
+          <SuggestView
+            wardrobe={wardrobe}
+            wearLog={wearLog}
+            onWear={wear}
+            onUnwear={unwear}
+            onEdit={() => setView('edit')}
+            onChangeWardrobe={changeWardrobe}
+            onImportWearLog={importWearLog}
+          />
+        </div>
+        {view === 'edit' && (
           <WardrobeView
             wardrobe={wardrobe}
             wearLog={wearLog}
@@ -56,6 +59,7 @@ export default function App() {
             onWear={wear}
             onUnwear={unwear}
             onImportWearLog={importWearLog}
+            onBack={() => setView('main')}
           />
         )}
       </main>

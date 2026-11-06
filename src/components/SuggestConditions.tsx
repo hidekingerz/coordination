@@ -1,12 +1,10 @@
 import { useState } from 'react';
-import type { ClothingItem, Formality } from '../types';
 import { ALL_FORMALITIES, FORMALITY_LABEL, SEASON_LABEL, WARMTH_LABEL } from '../types';
+import type { Formality } from '../types';
 import type { Conditions } from '../lib/season';
 import type { DailyTemperature } from '../lib/weather';
 import { CURRENT_LOCATION_ID, PRESET_LOCATIONS, type Location } from '../lib/location';
 import type { FreshnessMode } from '../lib/outfit';
-import { ItemPicker } from './ItemPicker';
-import { Swatch } from './Swatch';
 
 export type DateMode = 'today' | 'tomorrow' | 'custom';
 
@@ -20,7 +18,6 @@ export type ForecastState =
 export type LocatingState = { status: 'idle' } | { status: 'busy' } | { status: 'error'; message: string };
 
 interface Props {
-  wardrobe: ClothingItem[];
   hasWearLog: boolean;
   conditions: Conditions;
   // 日付
@@ -38,13 +35,11 @@ interface Props {
   tempIsManual: boolean;
   onChangeTemp: (value: string) => void;
   onResetTemp: () => void;
-  // テイスト・履歴・必須アイテム
+  // テイスト・履歴
   formality: Formality | '';
   onChangeFormality: (f: Formality | '') => void;
   freshness: FreshnessMode;
   onChangeFreshness: (f: FreshnessMode) => void;
-  mustInclude: string[];
-  onChangeMustInclude: (ids: string[]) => void;
 }
 
 const FRESHNESS_SEGMENTS: [FreshnessMode, string][] = [
@@ -76,16 +71,14 @@ function Segmented<T extends string>({
 }
 
 /**
- * 提案の条件。よく使う「日付・テイスト」と地点・予報のステータスを常時表示し、
- * 例外的な調整 (気温の手入力、着たいアイテム、着用履歴) は「条件を絞る」に畳む。
+ * 提案の条件。日付・テイスト・地点・予報・(履歴があれば) 着用履歴の扱いを全部その場に出す。
+ * 気温の手入力だけは「気温を変える」で開く (手入力中と予報が取れないときは最初から開いている)。
  */
 export function SuggestConditions(p: Props) {
-  const [open, setOpen] = useState(false);
+  const [tempOpen, setTempOpen] = useState(false);
   const [choosingLocation, setChoosingLocation] = useState(false);
-  const [picking, setPicking] = useState(false);
 
-  const mustItems = p.mustInclude.map((id) => p.wardrobe.find((i) => i.id === id)).filter((i): i is ClothingItem => Boolean(i));
-  const overrides = (p.tempIsManual ? 1 : 0) + (mustItems.length > 0 ? 1 : 0) + (p.hasWearLog && p.freshness !== 'balanced' ? 1 : 0);
+  const showTemp = tempOpen || p.tempIsManual || p.forecast.status === 'error' || p.forecast.status === 'unavailable';
   const c = p.conditions;
 
   return (
@@ -120,6 +113,12 @@ export function SuggestConditions(p: Props) {
             onChange={p.onChangeFormality}
           />
         </div>
+        {p.hasWearLog && (
+          <div className="cond-field">
+            <span>最近着た服の扱い</span>
+            <Segmented label="着用履歴" value={p.freshness} options={FRESHNESS_SEGMENTS} onChange={p.onChangeFreshness} />
+          </div>
+        )}
       </div>
 
       <div className="cond-status" data-testid="cond-status">
@@ -133,6 +132,9 @@ export function SuggestConditions(p: Props) {
           {p.location.name} ▾
         </button>
         <ForecastText state={p.forecast} manual={p.tempIsManual} tempStr={p.tempStr} />
+        <button type="button" className="link" aria-expanded={showTemp} onClick={() => setTempOpen((v) => !v)}>
+          気温を変える
+        </button>
         <span className="pill">{SEASON_LABEL[c.season]}</span>
         {c.acceptableSeasons.length > 1 && (
           <span className="pill muted">
@@ -165,62 +167,20 @@ export function SuggestConditions(p: Props) {
         </div>
       )}
 
-      <button type="button" className="link toggle" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-        {open ? '▴' : '▸'} 条件を絞る{overrides > 0 ? ` (${overrides})` : ''}
-      </button>
-
-      {open && (
-        <div className="cond-more">
-          <div className="cond-field">
-            <span>
-              気温 (℃) <span className="muted">予報の最高気温を使っています。変えたいときだけ入力</span>
-            </span>
-            <div className="temp-row">
-              <input type="number" inputMode="decimal" placeholder="例: 18" value={p.tempStr} onChange={(e) => p.onChangeTemp(e.target.value)} />
-              {p.tempIsManual && p.forecast.status === 'ok' && (
-                <button type="button" className="btn small" onClick={p.onResetTemp}>
-                  予報に戻す
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="cond-field">
-            <span>
-              このアイテムを着たい <span className="muted">任意・複数可</span>
-            </span>
-            <div className="must-row">
-              <button type="button" className="btn" onClick={() => setPicking(true)} disabled={p.wardrobe.length === 0}>
-                アイテムを選ぶ
-              </button>
-              {mustItems.length === 0 ? (
-                <span className="muted">指定なし</span>
-              ) : (
-                mustItems.map((i) => (
-                  <span key={i.id} className="must-chip" data-testid="must-chip">
-                    <Swatch color={i.color} size={12} /> {i.name}
-                    <button
-                      type="button"
-                      className="must-remove"
-                      aria-label={`${i.name} を外す`}
-                      onClick={() => p.onChangeMustInclude(p.mustInclude.filter((id) => id !== i.id))}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))
-              )}
-            </div>
-          </div>
-          {p.hasWearLog && (
-            <div className="cond-field">
-              <span>最近着た服の扱い</span>
-              <Segmented label="着用履歴" value={p.freshness} options={FRESHNESS_SEGMENTS} onChange={p.onChangeFreshness} />
-            </div>
+      {showTemp && (
+        <div className="temp-row">
+          <label className="muted" htmlFor="cond-temp">
+            気温 (℃)
+          </label>
+          <input id="cond-temp" type="number" inputMode="decimal" placeholder="例: 18" value={p.tempStr} onChange={(e) => p.onChangeTemp(e.target.value)} />
+          {p.tempIsManual && p.forecast.status === 'ok' && (
+            <button type="button" className="btn small" onClick={p.onResetTemp}>
+              予報に戻す
+            </button>
           )}
+          {!p.tempIsManual && p.forecast.status === 'ok' && <span className="muted">予報の最高気温を使っています</span>}
         </div>
       )}
-
-      {picking && <ItemPicker wardrobe={p.wardrobe} selected={p.mustInclude} onChange={p.onChangeMustInclude} onClose={() => setPicking(false)} />}
     </div>
   );
 }
@@ -237,7 +197,7 @@ function ForecastText({ state, manual, tempStr }: { state: ForecastState; manual
         </span>
       );
     case 'error':
-      return <span className="forecast warn">予報を取得できませんでした。「条件を絞る」から気温を入力できます</span>;
+      return <span className="forecast warn">予報を取得できませんでした。気温を入力してください</span>;
     case 'unavailable':
       return <span className="forecast muted">この日付の予報は取得できません</span>;
     default:
