@@ -233,7 +233,8 @@ body {
 .closet-tile:hover { border-color: var(--accent); }
 .closet-tile[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
 .closet-tile .item-visual { flex: none; width: 100%; height: 56px; }
-.closet-tile strong { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 名前は 2 行まで見せる。1 行だと「ベージュの…」で何の服か分からない */
+.closet-tile .tile-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; min-width: 0; overflow: hidden; overflow-wrap: anywhere; line-height: 1.3; }
 .closet-tile .wear { color: var(--muted); font-size: 0.75rem; }
 @media (max-width: 600px) {
   .closet-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); max-height: 300px; }

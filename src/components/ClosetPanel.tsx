@@ -183,12 +183,13 @@ export function ClosetPanel(p: ClosetPanelProps) {
                     className="closet-tile"
                     aria-pressed={on}
                     aria-label={`${item.name} を${on ? '選択解除' : '選択'}`}
+                    title={item.name}
                     onClick={() => p.onToggle(item.id)}
                   >
                     <span className="item-visual" style={{ background: item.color }}>
                       {item.imageUrl ? <img src={item.imageUrl} alt="" /> : null}
                     </span>
-                    <strong>{item.name}</strong>
+                    <strong className="tile-name">{item.name}</strong>
                     {wearStats && <span className="wear">{describeLastWorn(statsFor(wearStats, item.id))}</span>}
                   </button>
                 );
