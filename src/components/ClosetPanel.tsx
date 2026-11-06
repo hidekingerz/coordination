@@ -22,14 +22,39 @@ export interface ClosetPanelProps {
   onLoadSample: () => void;
 }
 
+const OPEN_KEY = 'coordination.closet.open';
+
+/** 既定は閉じる。提案を初画面に出すため、開いた人だけ次回も開いたままにする */
+function loadOpen(): boolean {
+  try {
+    return localStorage.getItem(OPEN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+function saveOpen(open: boolean): void {
+  try {
+    localStorage.setItem(OPEN_KEY, open ? '1' : '0');
+  } catch {
+    // 保存できなくても動作には影響しない
+  }
+}
+
 /**
  * メイン画面のクローゼット。カテゴリをタブにして 1 段だけ見せ、タイルを押すと「着たい服」に入る。
  * 検索と「今の条件に合う服だけ」で候補を減らし、高さ固定のグリッドの中をスクロールする。
+ * 既定では「着たい服」の行だけ見せて折りたたみ、コーデ提案がすぐ下に見えるようにする。
  */
 export function ClosetPanel(p: ClosetPanelProps) {
   const { wardrobe, conditions, wearStats, selected } = p;
+  const [open, setOpen] = useState(loadOpen);
   const [query, setQuery] = useState('');
   const [fitOnly, setFitOnly] = useState(true);
+  const toggleOpen = () => {
+    const next = !open;
+    setOpen(next);
+    saveOpen(next);
+  };
 
   /** 服のあるカテゴリ (ALL_CATEGORIES 順)。検索で 0 件になっても消さない */
   const categories = useMemo(() => ALL_CATEGORIES.filter((c) => wardrobe.some((i) => i.category === c)), [wardrobe]);
@@ -96,6 +121,11 @@ export function ClosetPanel(p: ClosetPanelProps) {
             すべて外す
           </button>
         )}
+        {wardrobe.length > 0 && (
+          <button type="button" className="link" aria-expanded={open} onClick={toggleOpen}>
+            {open ? 'クローゼットを閉じる' : 'クローゼットから選ぶ'}
+          </button>
+        )}
         <span className="spacer" />
         <button type="button" className="link" onClick={p.onEdit}>
           クローゼットを編集 ›
@@ -115,7 +145,7 @@ export function ClosetPanel(p: ClosetPanelProps) {
             アイテムを追加
           </button>
         </div>
-      ) : (
+      ) : !open ? null : (
         <>
           <div className="closet-tools">
             <input className="search" placeholder="名前・ブランド・タグで検索" value={query} onChange={(e) => changeQuery(e.target.value)} />
