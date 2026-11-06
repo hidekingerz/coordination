@@ -1,5 +1,14 @@
 import { useState } from 'react';
-import { ALL_FORMALITIES, FORMALITY_LABEL, SEASON_LABEL, WARMTH_LABEL } from '../types';
+import { ALL_FORMALITIES, FORMALITY_LABEL, SEASON_LABEL, WARMTH_LABEL, type Warmth } from '../types';
+
+/** 条件バーの一言。「目安の厚さ: 2 (初夏・残暑 (薄い))」は数字と入れ子括弧で何をすればよいか分からなかった */
+const WARMTH_HINT: Record<Warmth, string> = {
+  1: 'とても薄手',
+  2: '薄手',
+  3: 'ふつうの厚さ',
+  4: '厚手',
+  5: 'とても厚手',
+};
 import type { Formality } from '../types';
 import type { Conditions } from '../lib/season';
 import type { DailyTemperature } from '../lib/weather';
@@ -141,8 +150,8 @@ export function SuggestConditions(p: Props) {
             {c.acceptableSeasons.filter((s) => s !== c.season).map((s) => SEASON_LABEL[s]).join('・')}の服も候補
           </span>
         )}
-        <span className="pill">
-          目安の厚さ: {c.targetWarmth} ({WARMTH_LABEL[c.targetWarmth]})
+        <span className="pill" title={`目安の厚さ ${c.targetWarmth}/5 (${WARMTH_LABEL[c.targetWarmth]})`}>
+          {WARMTH_HINT[c.targetWarmth]}でよさそう
         </span>
       </div>
       {choosingLocation && (
