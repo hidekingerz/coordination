@@ -295,3 +295,20 @@ describe('ClosetPanel must-include hint', () => {
     expect(screen.queryByText(/下の服をタップ/)).toBeNull();
   });
 });
+
+describe('ClosetPanel tile brand', () => {
+  const withBrand: ClothingItem = { ...SAMPLE_WARDROBE[0], id: 'b-1', name: 'ステンカラーコート', brand: 'ユニクロ' };
+
+  it('shows the brand on the tile so similar names can be told apart', () => {
+    renderOpen({ wardrobe: [withBrand] });
+    const tile = screen.getByRole('button', { name: 'ステンカラーコート を選択' });
+    expect(within(tile).getByText('ユニクロ').className).toBe('tile-brand');
+    expect(tile.getAttribute('title')).toBe('ユニクロ ステンカラーコート');
+  });
+
+  it('omits the brand line when the item has none', () => {
+    renderOpen();
+    const tile = screen.getByRole('button', { name: 'ネイビーのステンカラーコート を選択' });
+    expect(tile.querySelector('.tile-brand')).toBeNull();
+  });
+});
