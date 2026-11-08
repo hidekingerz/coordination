@@ -9,6 +9,7 @@ import { SuggestConditions, type DateMode, type ForecastState, type LocatingStat
 import { OutfitCard } from './OutfitCard';
 import { ClosetPanel } from './ClosetPanel';
 import { toggleMustInclude } from '../lib/selection';
+import { loadColorMode, saveColorMode, type ColorMode } from '../lib/colorMode';
 import { ImportDialog } from './ImportDialog';
 import { mergeWardrobe, type MergeMode } from '../lib/storage';
 import { SAMPLE_WARDROBE } from '../data/sample';
@@ -147,6 +148,12 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onCha
     });
   }, [wardrobe]);
   const [freshness, setFreshness] = useState<FreshnessMode>('balanced');
+  // 色合わせの基準は日々の条件ではなく好みなので、記憶して次回も使う
+  const [colorMode, setColorMode] = useState<ColorMode>(() => loadColorMode());
+  const changeColorMode = (m: ColorMode) => {
+    setColorMode(m);
+    saveColorMode(m);
+  };
 
   const wearStats = useMemo(() => buildWearStats(wearLog, dateStr), [wearLog, dateStr]);
   const recentOutfitIds = useMemo(() => {
@@ -167,7 +174,7 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onCha
   const [worn, setWorn] = useState<{ outfit: Outfit; date: string } | null>(null);
 
   // 条件が変わったら 1 ページ目に戻す
-  useEffect(() => setPage(0), [wardrobe, conditions, formality, mustInclude, freshness, wearStats, recentOutfitIds]);
+  useEffect(() => setPage(0), [wardrobe, conditions, formality, mustInclude, freshness, colorMode, wearStats, recentOutfitIds]);
 
   useEffect(() => {
     if (wardrobe.length === 0) {
@@ -184,13 +191,14 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onCha
         wearStats: wearLog.length ? wearStats : undefined,
         freshnessWeight: FRESHNESS_PRESETS[freshness],
         recentOutfitIds,
+        colorMode,
       });
       setResults(all.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE));
       setStale(false);
       setWorn(null);
     }, RECALC_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [wardrobe, conditions, formality, mustInclude, freshness, wearStats, recentOutfitIds, wearLog.length, page]);
+  }, [wardrobe, conditions, formality, mustInclude, freshness, colorMode, wearStats, recentOutfitIds, wearLog.length, page]);
 
   const wearOutfit = (outfit: Outfit) => {
     onWear(
@@ -240,6 +248,8 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onCha
         onChangeFormality={setFormality}
         freshness={freshness}
         onChangeFreshness={setFreshness}
+        colorMode={colorMode}
+        onChangeColorMode={changeColorMode}
       />
 
       <ClosetPanel

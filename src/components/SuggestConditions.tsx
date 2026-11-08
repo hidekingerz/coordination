@@ -14,6 +14,7 @@ import type { Conditions } from '../lib/season';
 import type { DailyTemperature } from '../lib/weather';
 import { CURRENT_LOCATION_ID, PRESET_LOCATIONS, type Location } from '../lib/location';
 import type { FreshnessMode } from '../lib/outfit';
+import { ALL_COLOR_MODES, COLOR_MODES, type ColorMode } from '../lib/colorMode';
 
 export type DateMode = 'today' | 'tomorrow' | 'custom';
 
@@ -49,6 +50,9 @@ interface Props {
   onChangeFormality: (f: Formality | '') => void;
   freshness: FreshnessMode;
   onChangeFreshness: (f: FreshnessMode) => void;
+  // 色合わせの基準 (好みとして記憶される)
+  colorMode: ColorMode;
+  onChangeColorMode: (m: ColorMode) => void;
 }
 
 const FRESHNESS_SEGMENTS: [FreshnessMode, string][] = [
@@ -65,13 +69,14 @@ function Segmented<T extends string>({
 }: {
   label: string;
   value: T;
-  options: [T, string][];
+  /** [値, 表示名, (任意) ホバーで出す 1 行説明] */
+  options: [T, string, string?][];
   onChange: (v: T) => void;
 }) {
   return (
     <div className="segmented" role="group" aria-label={label}>
-      {options.map(([v, text]) => (
-        <button key={v} type="button" className={`seg ${value === v ? 'on' : ''}`} aria-pressed={value === v} onClick={() => onChange(v)}>
+      {options.map(([v, text, title]) => (
+        <button key={v} type="button" className={`seg ${value === v ? 'on' : ''}`} aria-pressed={value === v} title={title} onClick={() => onChange(v)}>
           {text}
         </button>
       ))}
@@ -86,6 +91,7 @@ function Segmented<T extends string>({
 export function SuggestConditions(p: Props) {
   const [tempOpen, setTempOpen] = useState(false);
   const [choosingLocation, setChoosingLocation] = useState(false);
+  const [choosingColorMode, setChoosingColorMode] = useState(false);
 
   const showTemp = tempOpen || p.tempIsManual || p.forecast.status === 'error' || p.forecast.status === 'unavailable';
   const c = p.conditions;
@@ -153,7 +159,29 @@ export function SuggestConditions(p: Props) {
         <span className="pill" title={`目安の厚さ ${c.targetWarmth}/5 (${WARMTH_LABEL[c.targetWarmth]})`}>
           {WARMTH_HINT[c.targetWarmth]}でよさそう
         </span>
+        {/* 毎日変える条件ではなく好みなので、地点と同じく押したときだけ開く (条件欄の高さを増やさない) */}
+        <button
+          type="button"
+          className="link"
+          aria-label={`色合わせの基準を変える (現在: ${COLOR_MODES[p.colorMode].label})`}
+          aria-expanded={choosingColorMode}
+          onClick={() => setChoosingColorMode((v) => !v)}
+        >
+          {/* 「色合わせ: 標準 ▾」だと 375px で状態行が 1 行増えて提案が 27px 下がる。「配色: 標準 ▾」なら厚さピルの行に収まる */}
+          配色: {COLOR_MODES[p.colorMode].label} ▾
+        </button>
       </div>
+      {choosingColorMode && (
+        <div className="cond-colormode">
+          <Segmented
+            label="色合わせの基準"
+            value={p.colorMode}
+            options={ALL_COLOR_MODES.map((m) => [m, COLOR_MODES[m].label, COLOR_MODES[m].description] as [ColorMode, string, string])}
+            onChange={p.onChangeColorMode}
+          />
+          <span className="muted">{COLOR_MODES[p.colorMode].description}</span>
+        </div>
+      )}
       {choosingLocation && (
         <div className="cond-location">
           <select

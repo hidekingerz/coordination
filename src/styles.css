@@ -213,6 +213,7 @@ body {
 .cond-status .location { font-weight: 600; font-size: 0.95rem; }
 .cond-location { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
 .cond-location select { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+.cond-colormode { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 8px; font-size: 0.9rem; }
 .temp-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; font-size: 0.9rem; }
 .temp-row input { width: 110px; }
 
