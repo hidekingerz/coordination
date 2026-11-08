@@ -45,16 +45,21 @@ export function hexToHsl(hex: string): HSL {
 export function isNeutral(hsl: HSL): boolean {
   if (hsl.l >= 0.92 || hsl.l <= 0.12) return true; // 白 / 黒
   if (hsl.s <= 0.15) return true; // グレー系
-  // ネイビー (暗い青)
-  if (hsl.h >= 200 && hsl.h <= 260 && hsl.l <= 0.28) return true;
-  // ベージュ・エクリュ (明るく彩度の低い暖色)
-  if (hsl.h >= 20 && hsl.h <= 60 && hsl.l >= 0.6 && hsl.s <= 0.5) return true;
-  // ブラウン (暗めで彩度の低い橙〜黄)
-  if (hsl.h >= 15 && hsl.h < 55 && hsl.l <= 0.4 && hsl.s <= 0.6) return true;
-  // カーキ・オリーブ (暗めで彩度の低い黄緑)
-  if (hsl.h >= 55 && hsl.h <= 110 && hsl.l <= 0.5 && hsl.s <= 0.45) return true;
-  return false;
+  return isNavy(hsl) || isBeige(hsl) || isBrown(hsl) || isKhaki(hsl);
 }
+
+/** ネイビー (暗い青) */
+const isNavy = (c: HSL) => c.h >= 200 && c.h <= 260 && c.l <= 0.28;
+/** ベージュ・エクリュ (明るく彩度の低い暖色) */
+const isBeige = (c: HSL) => c.h >= 20 && c.h <= 60 && c.l >= 0.6 && c.s <= 0.5;
+/**
+ * ブラウン (彩度の低い橙〜黄)。明度の上限はベージュの下限 0.6 に合わせる。
+ * 以前は 0.4 までで、キャメル (#c19a6b, 明度 0.59) やシエナがどちらにも入らず「オレンジ」の差し色になっていた (#66)。
+ * 鮮やかなオレンジ・マスタードは彩度 0.6 超なので差し色のまま。
+ */
+const isBrown = (c: HSL) => c.h >= 15 && c.h < 55 && c.l <= 0.6 && c.s <= 0.6;
+/** カーキ・オリーブ (暗めで彩度の低い黄緑) */
+const isKhaki = (c: HSL) => c.h >= 55 && c.h <= 110 && c.l <= 0.5 && c.s <= 0.45;
 
 export type ColorFamily =
   | 'white'
@@ -94,10 +99,10 @@ export function colorFamily(hex: string): ColorFamily {
   if (hsl.l >= 0.92) return 'white';
   if (hsl.l <= 0.12) return 'black';
   if (hsl.s <= 0.15) return 'gray';
-  if (hsl.h >= 200 && hsl.h <= 260 && hsl.l <= 0.28) return 'navy';
-  if (hsl.h >= 20 && hsl.h <= 60 && hsl.l >= 0.6 && hsl.s <= 0.5) return 'beige';
-  if (hsl.h >= 15 && hsl.h < 55 && hsl.l <= 0.4 && hsl.s <= 0.6) return 'brown';
-  if (hsl.h >= 55 && hsl.h <= 110 && hsl.l <= 0.5 && hsl.s <= 0.45) return 'khaki';
+  if (isNavy(hsl)) return 'navy';
+  if (isBeige(hsl)) return 'beige';
+  if (isBrown(hsl)) return 'brown';
+  if (isKhaki(hsl)) return 'khaki';
   const h = hsl.h;
   if (h < 15 || h >= 335) return hsl.l > 0.7 ? 'pink' : 'red';
   if (h < 45) return 'orange';
