@@ -78,3 +78,23 @@ describe('evaluatePalette', () => {
     expect(busy.score).toBeLessThan(0.5);
   });
 });
+
+describe('camel and tan are basic colors (#66)', () => {
+  // ベージュ (明度 0.6 以上) とブラウン (明度 0.4 以下) の隙間に落ちていた中間の茶色
+  it('classifies camel as brown and treats it as neutral', () => {
+    expect(colorFamily('#c19a6b')).toBe('brown');
+    expect(isNeutral(hexToHsl('#c19a6b'))).toBe(true);
+  });
+  it('classifies sienna and copper as brown', () => {
+    expect(colorFamily('#a0522d')).toBe('brown');
+    expect(colorFamily('#b87333')).toBe('brown');
+  });
+  it('keeps vivid orange and mustard as accents', () => {
+    expect(colorFamily('#e07020')).toBe('orange');
+    expect(isNeutral(hexToHsl('#e07020'))).toBe(false);
+    expect(colorFamily('#c68e17')).toBe('orange');
+  });
+  it('camel with a navy base is basic + basic, not basic + accent', () => {
+    expect(pairScore('#c19a6b', '#1f2a44').relation).toBe('neutral-neutral');
+  });
+});
