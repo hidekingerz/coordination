@@ -376,3 +376,58 @@ describe('fitsConditions', () => {
     expect(fitsConditions(mk(['summer']), earlyMarch)).toBe(false);
   });
 });
+
+describe('colorMode in scoring (#67)', () => {
+  const mk = (id: string, category: ClothingItem['category'], color: string, formality: ClothingItem['formality'] = 'smart'): ClothingItem => ({
+    id,
+    name: id,
+    category,
+    color,
+    seasons: ['spring', 'autumn'],
+    warmth: 3,
+    formality,
+    tags: [],
+    createdAt: '2026-01-01T00:00:00.000Z',
+  });
+  const c = buildConditions(new Date('2026-10-15'), 18);
+  const navyJacket = mk('jk', 'outer', '#1f2a44');
+  const whiteShirt = mk('sh', 'tops', '#f5f5f5');
+  const brownPants = mk('pt', 'bottoms', '#5c4a3a');
+  const brownShoes = mk('sho', 'shoes', '#3e2616');
+  const outfit = [navyJacket, whiteShirt, brownPants, brownShoes];
+
+  it('defaults to the standard mode and leaves the reason text as before', () => {
+    const o = scoreOutfit(outfit, { conditions: c });
+    expect(o.reasons[0]).toMatch(/^モノトーン \/ ベーシック（/);
+    expect(scoreOutfit(outfit, { conditions: c, colorMode: 'standard' })).toEqual(o);
+  });
+
+  it('names アズーロ・エ・マローネ in italian mode and lifts the colour score', () => {
+    const std = scoreOutfit(outfit, { conditions: c });
+    const it_ = scoreOutfit(outfit, { conditions: c, colorMode: 'italian' });
+    expect(it_.reasons[0]).toMatch(/^アズーロ・エ・マローネ（/);
+    expect(it_.scheme).toBe('アズーロ・エ・マローネ');
+    expect(it_.breakdown.color).toBeGreaterThan(std.breakdown.color);
+  });
+
+  it('lowers brown shoes in british mode when the wanted formality is smart, with a warning', () => {
+    const std = scoreOutfit(outfit, { conditions: c, formality: 'smart' });
+    const uk = scoreOutfit(outfit, { conditions: c, formality: 'smart', colorMode: 'british' });
+    expect(uk.breakdown.color).toBeLessThan(std.breakdown.color);
+    expect(uk.warnings.some((w) => w.includes('街着'))).toBe(true);
+  });
+
+  it('uses the outfit\'s own formality when none is requested', () => {
+    // 白シャツだと「ネイビー × ホワイト」の定番ペアが同点で先に取られるので、ベージュに替えて田舎の加点だけを見る
+    const casual = [navyJacket, mk('sh-beige', 'tops', '#d9cfc0'), brownPants, brownShoes].map((i) => ({ ...i, formality: 'casual' as const }));
+    const std = scoreOutfit(casual, { conditions: c });
+    const uk = scoreOutfit(casual, { conditions: c, colorMode: 'british' });
+    expect(uk.scheme).toBe('カントリー調のアースカラー');
+    expect(uk.breakdown.color).toBeGreaterThan(std.breakdown.color);
+  });
+
+  it('passes the mode through suggestOutfits', () => {
+    const res = suggestOutfits(outfit, { conditions: c, colorMode: 'italian' });
+    expect(res[0].scheme).toBe('アズーロ・エ・マローネ');
+  });
+});

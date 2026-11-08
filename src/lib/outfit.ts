@@ -1,7 +1,8 @@
 import type { ClothingItem, Formality } from '../types';
 import { inferOuterLayer } from './figure';
 import { FORMALITY_LABEL, SEASON_LABEL } from '../types';
-import { COLOR_FAMILY_LABEL, evaluatePalette } from './color';
+import { COLOR_FAMILY_LABEL } from './color';
+import { evaluatePaletteIn, type ColorMode } from './colorMode';
 import type { Conditions } from './season';
 import { describeLastWorn, freshnessScore, statsFor, type WearStatsMap } from './wear';
 
@@ -42,6 +43,8 @@ export interface SuggestOptions {
    * suggestOutfits がクローゼットの半数以上に記録があるときだけ true にする
    */
   mentionNeverWorn?: boolean;
+  /** 色合わせの基準。未指定は 'standard' (色相環の一般理論) */
+  colorMode?: ColorMode;
 }
 
 /** 履歴が「たまった」とみなす、記録のあるアイテムの割合 */
@@ -179,7 +182,8 @@ function dominantFormality(items: ClothingItem[]): Formality {
 export function scoreOutfit(items: ClothingItem[], opts: SuggestOptions): Outfit {
   const { conditions } = opts;
   const colors = items.flatMap((i) => (i.subColor ? [i.color, i.subColor] : [i.color]));
-  const palette = evaluatePalette(colors);
+  // イギリス流の「街/田舎」判定には、条件のテイスト指定があればそれ、無ければコーデの多数派を使う
+  const palette = evaluatePaletteIn(colors, opts.colorMode ?? 'standard', { formality: opts.formality ?? dominantFormality(items) });
   const warmth = warmthScore(items, conditions);
   const formality = formalityScore(items, opts.formality);
   const fits = items.map((i) => seasonFit(i, conditions));
@@ -201,6 +205,7 @@ export function scoreOutfit(items: ClothingItem[], opts: SuggestOptions): Outfit
   const reasons: string[] = [];
   const warnings: string[] = [];
   reasons.push(`${palette.scheme}（${palette.families.map((f) => COLOR_FAMILY_LABEL[f]).join('・')}）`);
+  if (palette.warning) warnings.push(palette.warning);
   if (warmth.score >= 0.8) {
     reasons.push(
       conditions.temperature !== undefined
