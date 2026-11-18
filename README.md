@@ -44,6 +44,14 @@ npm run build      # 型チェック + 本番ビルド (dist/)
 npm run preview    # ビルド結果をローカルで確認
 ```
 
+```bash
+npm run mutate      # main との差分だけミューテーションテスト (src/lib)
+npm run mutate:all  # src/lib 全体。初回は約 20 分、2 回目以降は変更のない関数の結果を再利用
+```
+
+ミューテーションテストは [mutator](https://github.com/mizchi/mutator) を使います。実装を少しずつ壊し、テストが落ちるかを確かめます。
+落ちなかった箇所 (Survived) はテストが見ていない挙動です。`mutate:all` は HTML レポートを `.mutator/report/index.html` に出します。
+
 静的サイトとしてビルドされるので、Vercel / Netlify / GitHub Pages などにそのまま配置できます。
 
 ## Gist / JSON からクローゼットを取り込む
