@@ -95,7 +95,11 @@ export const COLOR_FAMILY_LABEL: Record<ColorFamily, string> = {
 };
 
 export function colorFamily(hex: string): ColorFamily {
-  const hsl = hexToHsl(hex);
+  return colorFamilyOfHsl(hexToHsl(hex));
+}
+
+/** HSL から色ファミリーを決める (境界の判定を、8 ビットの色に丸めずに試せるよう分けている) */
+export function colorFamilyOfHsl(hsl: HSL): ColorFamily {
   if (hsl.l >= 0.92) return 'white';
   if (hsl.l <= 0.12) return 'black';
   if (hsl.s <= 0.15) return 'gray';

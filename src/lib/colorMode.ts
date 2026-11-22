@@ -161,7 +161,8 @@ export function applyColorMode(base: PaletteEvaluation, hexes: string[], mode: C
   }
 
   // 差し色はベーシックカラー以外。彩度の高いネイビーのようなベーシックカラーは差し色に数えない
-  if (def.vividAccentPenalty > 0 && hsls.some((c) => !isNeutral(c) && c.s > VIVID_S && c.l > 0.12 && c.l < 0.92)) {
+  // ベーシックカラーには白・黒 (明度 0.12 以下・0.92 以上) も入るので、明度の範囲はここで改めて見ない
+  if (def.vividAccentPenalty > 0 && hsls.some((c) => !isNeutral(c) && c.s > VIVID_S)) {
     score -= def.vividAccentPenalty;
     if (def.vividAccentWarning) warnings.push(def.vividAccentWarning);
   }
