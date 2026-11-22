@@ -159,6 +159,12 @@ function shapeOf(p: FigurePart, hasMid = false): ReactNode {
           <>
             <rect x="30" y="38" width="26" height={length} rx="5" fill={fill} />
             <rect x="64" y="38" width="26" height={length} rx="5" fill={fill} />
+            {accent && (
+              <>
+                <rect x="52" y="38" width="4" height={length} fill={accent} />
+                <rect x="64" y="38" width="4" height={length} fill={accent} />
+              </>
+            )}
           </>
         );
       }

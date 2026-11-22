@@ -7,7 +7,7 @@
   --accent: #2b4c7e;
   --accent-text: #ffffff;
   --danger: #b4423a;
-  --warn: #9a6a00;
+  --warn: #7f5800;
   --radius: 12px;
   color-scheme: light dark;
 }
@@ -21,6 +21,7 @@
     --accent: #7aa2e3;
     --accent-text: #0e1420;
     --warn: #e0b85a;
+    --danger: #ef8a80;
   }
 }
 * { box-sizing: border-box; }
@@ -64,7 +65,10 @@ body {
   border: 1px solid var(--border); background: var(--card); color: var(--text);
   border-radius: 999px; padding: 4px 12px; font-size: 0.9rem; cursor: pointer; user-select: none;
 }
-.chip input { display: none; }
+/* 入力は見た目だけ隠し、キーボードとスクリーンリーダーからは使えるようにする (display: none だと Tab で届かない) */
+.chip input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+.chip { position: relative; }
+.chip:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 .chip.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 /* 単独のオン/オフは塗りつぶさず、チェック印で状態を見せる (塗りつぶすと主ボタンに見える) */
 .chip.toggle::before { content: "☐"; margin-right: 6px; }
@@ -92,7 +96,7 @@ body {
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: flex-start; justify-content: center; padding: 24px 12px; overflow: auto; z-index: 10; }
 .modal { background: var(--card); border-radius: var(--radius); width: 100%; max-width: 520px; padding: 20px; border: 1px solid var(--border); }
 .item-form { display: flex; flex-direction: column; gap: 12px; }
-.item-form h3 { margin: 0 0 4px; }
+.item-form h2 { margin: 0 0 4px; font-size: 1.17rem; }
 .item-form label { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; }
 .item-form label.inline { flex-direction: row; align-items: center; gap: 6px; }
 .item-form input:not([type='checkbox']):not([type='color']):not([type='range']), .item-form select {
@@ -147,8 +151,8 @@ body {
 
 /* インポートダイアログ */
 .import-dialog { display: flex; flex-direction: column; gap: 14px; }
-.import-dialog h3 { margin: 0; }
-.import-dialog h4 { margin: 0 0 6px; font-size: 0.95rem; }
+.import-dialog h2 { margin: 0; font-size: 1.17rem; }
+.import-dialog h3 { margin: 0 0 6px; font-size: 0.95rem; }
 .import-section { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
 .import-section p.muted { margin: 0 0 8px; }
 .import-row { display: flex; gap: 8px; align-items: center; }
@@ -213,6 +217,8 @@ body {
 .cond-status .location { font-weight: 600; font-size: 0.95rem; }
 .cond-location { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
 .cond-location select { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+.cond-label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.cond-label-row .link { font-size: 0.85rem; line-height: 1; }
 .cond-colormode { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 8px; font-size: 0.9rem; }
 .temp-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; font-size: 0.9rem; }
 .temp-row input { width: 110px; }

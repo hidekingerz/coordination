@@ -6,6 +6,7 @@ import { SAMPLE_WARDROBE } from '../data/sample';
 import { buildConditions } from '../lib/season';
 import { buildWearStats } from '../lib/wear';
 import type { ClothingItem } from '../types';
+import { closetTile, closetTileNames } from './closetTestUtils';
 
 afterEach(() => {
   cleanup();
@@ -33,7 +34,7 @@ function renderPanel(over: Partial<ClosetPanelProps> = {}, { open = false } = {}
 }
 const renderOpen = (over: Partial<ClosetPanelProps> = {}) => renderPanel(over, { open: true });
 const tabs = () => screen.getAllByRole('tab').map((t) => t.textContent);
-const tiles = () => screen.queryAllByRole('button', { name: /を選択/ }).map((b) => b.getAttribute('aria-label'));
+const tiles = closetTileNames;
 const filterChip = () => screen.getByRole('button', { name: '今の条件に合う服だけ' });
 const search = () => screen.getByPlaceholderText('名前・ブランド・タグで検索');
 
@@ -43,7 +44,7 @@ describe('ClosetPanel tabs and filter', () => {
     expect(filterChip().getAttribute('aria-pressed')).toBe('true');
     expect(tabs()).toEqual(['アウター 3/5', 'トップス 3/9', 'ボトムス 3/6', 'ワンピース / セットアップ 1/1', 'シューズ 3/5', '小物 3/4']);
     expect(screen.getByRole('tab', { name: 'アウター 3/5' }).getAttribute('aria-selected')).toBe('true');
-    expect(tiles()).toEqual(['ネイビーのステンカラーコート を選択', 'ブラックのダウンジャケット を選択', 'グレーのカーディガン を選択']);
+    expect(tiles()).toEqual(['ネイビーのステンカラーコート', 'ブラックのダウンジャケット', 'グレーのカーディガン']);
   });
 
   it('shows every item when the filter is switched off', () => {
@@ -57,7 +58,7 @@ describe('ClosetPanel tabs and filter', () => {
   it('switches tab on click', () => {
     renderOpen();
     fireEvent.click(screen.getByRole('tab', { name: 'シューズ 3/5' }));
-    expect(tiles()).toEqual(['白のレザースニーカー を選択', 'ブラックのローファー を選択', 'ブラウンのブーツ を選択']);
+    expect(tiles()).toEqual(['白のレザースニーカー', 'ブラックのローファー', 'ブラウンのブーツ']);
   });
 
   it('shows a single tab and no crash for a one-category wardrobe', () => {
@@ -86,7 +87,7 @@ describe('ClosetPanel search', () => {
     fireEvent.change(search(), { target: { value: 'ローファー' } });
     expect(tabs()).toEqual(['アウター 0/5', 'トップス 0/9', 'ボトムス 0/6', 'ワンピース / セットアップ 0/1', 'シューズ 1/5', '小物 0/4']);
     expect(screen.getByRole('tab', { name: 'シューズ 1/5' }).getAttribute('aria-selected')).toBe('true');
-    expect(tiles()).toEqual(['ブラックのローファー を選択']);
+    expect(tiles()).toEqual(['ブラックのローファー']);
   });
 
   it('ignores surrounding whitespace and letter case', () => {
@@ -94,7 +95,7 @@ describe('ClosetPanel search', () => {
     fireEvent.click(filterChip()); // T シャツは冬物でないので先にフィルタを外す
     fireEvent.change(search(), { target: { value: '  tシャツ ' } });
     expect(screen.getByRole('tab', { name: 'トップス 2/9' }).getAttribute('aria-selected')).toBe('true');
-    expect(tiles()).toEqual(['白の無地Tシャツ を選択', 'ブラックのTシャツ を選択']);
+    expect(tiles()).toEqual(['白の無地Tシャツ', 'ブラックのTシャツ']);
   });
 
   it('shows the empty message with an escape hatch when only the filter hides matches', () => {
@@ -105,15 +106,15 @@ describe('ClosetPanel search', () => {
     fireEvent.click(screen.getByRole('button', { name: '「今の条件に合う服だけ」を外すと 1 点' }));
     expect(filterChip().getAttribute('aria-pressed')).toBe('false');
     expect(screen.getByRole('tab', { name: 'シューズ 1/5' }).getAttribute('aria-selected')).toBe('true');
-    expect(tiles()).toEqual(['ブラックのサンダル を選択']);
+    expect(tiles()).toEqual(['ブラックのサンダル']);
   });
 });
 
 describe('ClosetPanel selection', () => {
   it('calls onToggle with the item id and marks selected tiles pressed', () => {
     const p = renderOpen({ selected: ['s-outer-2'] });
-    expect(screen.getByRole('button', { name: 'ブラックのダウンジャケット を選択解除' }).getAttribute('aria-pressed')).toBe('true');
-    fireEvent.click(screen.getByRole('button', { name: 'ネイビーのステンカラーコート を選択' }));
+    expect(closetTile('ブラックのダウンジャケット').getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(closetTile('ネイビーのステンカラーコート'));
     expect(p.onToggle).toHaveBeenCalledWith('s-outer-1');
   });
 
@@ -123,7 +124,7 @@ describe('ClosetPanel selection', () => {
     expect(chips).toHaveLength(1);
     expect(chips[0].textContent).toContain('白の無地Tシャツ');
     fireEvent.click(screen.getByRole('tab', { name: /トップス/ }));
-    expect(tiles()).not.toContain('白の無地Tシャツ を選択解除');
+    expect(tiles()).not.toContain('白の無地Tシャツ');
     fireEvent.click(within(chips[0]).getByRole('button', { name: '白の無地Tシャツ を外す' }));
     expect(p.onToggle).toHaveBeenCalledWith('s-tops-1');
     fireEvent.click(screen.getByRole('button', { name: 'すべて外す' }));
@@ -148,8 +149,8 @@ describe('ClosetPanel order', () => {
     );
     renderOpen({ wearStats: stats });
     fireEvent.click(screen.getByRole('tab', { name: /トップス/ }));
-    expect(tiles()).toEqual(['ネイビーのタートルネック を選択', 'グレーのスウェット を選択', 'ボルドーのニット を選択']);
-    expect(screen.getByRole('button', { name: 'ボルドーのニット を選択' }).textContent).toContain('昨日着た');
+    expect(tiles()).toEqual(['ネイビーのタートルネック', 'グレーのスウェット', 'ボルドーのニット']);
+    expect(closetTile('ボルドーのニット').textContent).toContain('昨日着た');
   });
 });
 
@@ -212,7 +213,7 @@ describe('ClosetPanel collapsed by default', () => {
 describe('ClosetPanel tile name', () => {
   it('carries the full name in title so a clipped name can still be read', () => {
     renderOpen();
-    const tile = screen.getByRole('button', { name: 'ネイビーのステンカラーコート を選択' });
+    const tile = closetTile('ネイビーのステンカラーコート');
     expect(tile.getAttribute('title')).toBe('ネイビーのステンカラーコート');
     expect(tile.querySelector('strong')?.className).toBe('tile-name');
   });
@@ -301,14 +302,14 @@ describe('ClosetPanel tile brand', () => {
 
   it('shows the brand on the tile so similar names can be told apart', () => {
     renderOpen({ wardrobe: [withBrand] });
-    const tile = screen.getByRole('button', { name: 'ステンカラーコート を選択' });
+    const tile = closetTile('ステンカラーコート');
     expect(within(tile).getByText('ユニクロ').className).toBe('tile-brand');
     expect(tile.getAttribute('title')).toBe('ユニクロ ステンカラーコート');
   });
 
   it('omits the brand line when the item has none', () => {
     renderOpen();
-    const tile = screen.getByRole('button', { name: 'ネイビーのステンカラーコート を選択' });
+    const tile = closetTile('ネイビーのステンカラーコート');
     expect(tile.querySelector('.tile-brand')).toBeNull();
   });
 });

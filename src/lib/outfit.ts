@@ -45,6 +45,8 @@ export interface SuggestOptions {
   mentionNeverWorn?: boolean;
   /** 色合わせの基準。未指定は 'standard' (色相環の一般理論) */
   colorMode?: ColorMode;
+  /** 除く組み合わせ ID。「別の案を見る」で、前のページに出した案を除くのに使う */
+  excludeIds?: Set<string>;
 }
 
 /** 履歴が「たまった」とみなす、記録のあるアイテムの割合 */
@@ -205,7 +207,7 @@ export function scoreOutfit(items: ClothingItem[], opts: SuggestOptions): Outfit
   const reasons: string[] = [];
   const warnings: string[] = [];
   reasons.push(`${palette.scheme}（${palette.families.map((f) => COLOR_FAMILY_LABEL[f]).join('・')}）`);
-  if (palette.warning) warnings.push(palette.warning);
+  warnings.push(...(palette.warnings ?? []));
   if (warmth.score >= 0.8) {
     reasons.push(
       conditions.temperature !== undefined
@@ -331,8 +333,10 @@ export function suggestOutfits(wardrobe: ClothingItem[], opts: SuggestOptions): 
   }
 
   results.sort((a, b) => b.score - a.score);
+  const exclude = opts.excludeIds;
+  const remaining = exclude?.size ? results.filter((o) => !exclude.has(o.id)) : results;
 
-  return pickDiverse(results, limit, conditions, must);
+  return pickDiverse(remaining, limit, conditions, must);
 }
 
 /** 上位 limit 件の中で同じトップス / 同じアウターを使ってよい回数 */
@@ -412,7 +416,7 @@ function pickDiverse(results: Outfit[], limit: number, conditions: Conditions, m
       unaccept(victim);
       const next = candidates.find((o) => fits(o)) ?? candidates.find((o) => fits(o, true));
       if (!next) {
-        chosen.splice(victimIdx, 0, victim);
+        // 入れ替え先が無ければ元に戻す。accept が chosen に足し直すので、ここで splice して戻すと 2 回入る
         accept(victim);
         break;
       }
@@ -437,6 +441,7 @@ function pickDiverse(results: Outfit[], limit: number, conditions: Conditions, m
   fillWith((o) => withinLimits(o));
   fillWith((o) => !usedBase.has(baseKey(o)));
   fillWith(() => true);
-  return chosen;
+  // 補充した案も含めて点数順に並べる (補充は制限を緩めた順に足すので、そのままだと順位が崩れる)
+  return chosen.sort((a, b) => b.score - a.score);
 }
 

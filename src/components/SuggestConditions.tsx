@@ -120,7 +120,23 @@ export function SuggestConditions(p: Props) {
           </div>
         </div>
         <div className="cond-field">
-          <span>テイスト</span>
+          <div className="cond-label-row">
+            <span>テイスト</span>
+            {/*
+              色合わせの基準は毎日変える条件ではなく好みなので、押したときだけ開く。
+              状態行に置くと 375px で折り返して提案を押し下げる条件があったので、テイストの見出しの行 (右側が空いている) に置く
+            */}
+            <button
+              type="button"
+              className="link"
+              aria-label={`色合わせ: ${COLOR_MODES[p.colorMode].label} (色合わせの基準を変える)`}
+              aria-expanded={choosingColorMode}
+              onClick={() => setChoosingColorMode((v) => !v)}
+            >
+              色合わせ: {COLOR_MODES[p.colorMode].label}
+              <span aria-hidden="true"> ▾</span>
+            </button>
+          </div>
           <Segmented
             label="テイスト"
             value={p.formality}
@@ -140,11 +156,13 @@ export function SuggestConditions(p: Props) {
         <button
           type="button"
           className="link location"
-          aria-label={`地点を変える (現在: ${p.location.name})`}
+          // 読み上げ名は見えている地点名から始める (axe: label-content-name-mismatch)
+          aria-label={`${p.location.name} (地点を変える)`}
           aria-expanded={choosingLocation}
           onClick={() => setChoosingLocation((v) => !v)}
         >
-          {p.location.name} ▾
+          {p.location.name}
+          <span aria-hidden="true"> ▾</span>
         </button>
         <ForecastText state={p.forecast} manual={p.tempIsManual} tempStr={p.tempStr} />
         <button type="button" className="link" aria-expanded={showTemp} onClick={() => setTempOpen((v) => !v)}>
@@ -159,17 +177,6 @@ export function SuggestConditions(p: Props) {
         <span className="pill" title={`目安の厚さ ${c.targetWarmth}/5 (${WARMTH_LABEL[c.targetWarmth]})`}>
           {WARMTH_HINT[c.targetWarmth]}でよさそう
         </span>
-        {/* 毎日変える条件ではなく好みなので、地点と同じく押したときだけ開く (条件欄の高さを増やさない) */}
-        <button
-          type="button"
-          className="link"
-          aria-label={`色合わせの基準を変える (現在: ${COLOR_MODES[p.colorMode].label})`}
-          aria-expanded={choosingColorMode}
-          onClick={() => setChoosingColorMode((v) => !v)}
-        >
-          {/* 「色合わせ: 標準 ▾」だと 375px で状態行が 1 行増えて提案が 27px 下がる。「配色: 標準 ▾」なら厚さピルの行に収まる */}
-          配色: {COLOR_MODES[p.colorMode].label} ▾
-        </button>
       </div>
       {choosingColorMode && (
         <div className="cond-colormode">

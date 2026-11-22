@@ -62,12 +62,34 @@ export function parseImportDetailed(text: string): ImportResult {
 
   const warnings: string[] = [];
   const items: ClothingItem[] = [];
+  /**
+   * 使われている ID。id を省いた行の ID が、別の行 (id を書いた行も含む) と重なったら連番を付けて分ける。
+   * id を書いた行は前もって集めておき、後ろにあっても重ならないようにする
+   */
+  const used = new Set<string>(
+    arr.flatMap((raw) => {
+      const id = (raw as { id?: unknown } | null)?.id;
+      return typeof id === 'string' && id.trim() ? [id.trim()] : [];
+    }),
+  );
   arr.forEach((raw, idx) => {
     const r = coerceItem(raw, idx);
     if (!r) {
       warnings.push(`${idx + 1}件目: 名前とカテゴリが無いためスキップしました`);
       return;
     }
+    const hasOwnId = typeof (raw as { id?: unknown }).id === 'string' && Boolean((raw as { id: string }).id.trim());
+    if (!hasOwnId) {
+      // 重ならなければ今までどおりの ID のまま (既存の Gist を取り込み直しても ID が変わらない)。重なったら連番を付ける
+      const baseId = r.item.id;
+      let n = 1;
+      while (used.has(n === 1 ? baseId : `${baseId}-${n}`)) n++;
+      if (n > 1) {
+        r.item.id = `${baseId}-${n}`;
+        r.warnings.push(`${idx + 1}件目「${r.item.name}」: 同じ名前・カテゴリ・ブランドの服がほかにあるので ID を分けました (色違いなら id を付けると確実です)`);
+      }
+    }
+    used.add(r.item.id);
     items.push(r.item);
     warnings.push(...r.warnings);
   });
@@ -121,7 +143,9 @@ export const COLOR_NAME_ALIASES: Record<string, string> = {
   black: '#141414', 黒: '#141414', ブラック: '#141414',
   gray: '#8a8a8a', grey: '#8a8a8a', グレー: '#8a8a8a', 灰色: '#8a8a8a', チャコール: '#3a3a3a', charcoal: '#3a3a3a', ライトグレー: '#c4c4c4', シルバー: '#c0c0c0', silver: '#c0c0c0',
   navy: '#1f2a44', ネイビー: '#1f2a44', 紺: '#1f2a44',
-  beige: '#d9c4a5', ベージュ: '#d9c4a5', キャメル: '#c6a070', camel: '#c6a070', サンド: '#d2b88a',
+  beige: '#d9c4a5', ベージュ: '#d9c4a5', サンド: '#d2b88a',
+  // キャメルは #66 で決めたとおりブラウン扱い (イタリア流のアズーロ・エ・マローネの加点が付く)
+  キャメル: '#c19a6b', camel: '#c19a6b',
   brown: '#5a3a22', ブラウン: '#5a3a22', 茶: '#5a3a22', 茶色: '#5a3a22', ダークブラウン: '#3e2616', チョコ: '#3e2616',
   khaki: '#5a6b3a', カーキ: '#5a6b3a', olive: '#5a6b3a', オリーブ: '#5a6b3a',
   denim: '#2c3e5c', デニム: '#2c3e5c', indigo: '#2c3e5c', インディゴ: '#2c3e5c',
@@ -229,7 +253,11 @@ export function coerceItem(raw: unknown, index = 0): { item: ClothingItem; warni
   let formality = parseFormality(o.formality ?? o.テイスト);
   if (!formality) {
     formality = 'casual';
-    if (o.formality !== undefined || o.テイスト !== undefined) warnings.push(`${label}: テイストを解釈できずカジュアルにしました`);
+    warnings.push(
+      o.formality !== undefined || o.テイスト !== undefined
+        ? `${label}: テイストを解釈できずカジュアルにしました`
+        : `${label}: テイストが無いのでカジュアルにしました`,
+    );
   }
 
   const shape = category === 'bottoms' ? parseBottomsShape(o.shape ?? o.形) : undefined;

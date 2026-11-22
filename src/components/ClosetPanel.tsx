@@ -199,7 +199,7 @@ export function ClosetPanel(p: ClosetPanelProps) {
               )}
             </p>
           ) : (
-            <div className="closet-grid">
+            <div className="closet-grid" role="group" aria-label="クローゼットの服">
               {visible.map((item) => {
                 const on = selected.includes(item.id);
                 return (
@@ -207,8 +207,9 @@ export function ClosetPanel(p: ClosetPanelProps) {
                     key={item.id}
                     type="button"
                     className="closet-tile"
+                    // 読み上げ名は見えている文字 (ブランド・名前・着用状況) そのもの。選んだかどうかは aria-pressed で伝わる。
+                    // aria-label で「<名前> を選択」としていたときは、見えている文字と食い違っていた (axe: label-content-name-mismatch)
                     aria-pressed={on}
-                    aria-label={`${item.name} を${on ? '選択解除' : '選択'}`}
                     title={item.brand ? `${item.brand} ${item.name}` : item.name}
                     onClick={() => p.onToggle(item.id)}
                   >

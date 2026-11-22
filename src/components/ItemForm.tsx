@@ -103,7 +103,7 @@ export function ItemForm({ initial, wardrobe = [], onSubmit, onCancel }: Props) 
 
   return (
     <form className="item-form" onSubmit={handleSubmit}>
-      <h3>{initial ? 'アイテムを編集' : 'アイテムを追加'}</h3>
+      <h2>{initial ? 'アイテムを編集' : 'アイテムを追加'}</h2>
 
       <label>
         名前
@@ -211,8 +211,8 @@ export function ItemForm({ initial, wardrobe = [], onSubmit, onCancel }: Props) 
           主色 <span className="muted">({colorLabel(color)})</span>
         </legend>
         <div className="color-row">
-          <input type="color" value={normalizeHex(color) ?? '#000000'} onChange={(e) => setColor(e.target.value)} />
-          <input className="hex" value={color} onChange={(e) => setColor(e.target.value)} placeholder="#rrggbb" />
+          <input type="color" aria-label="主色を選ぶ" value={normalizeHex(color) ?? '#000000'} onChange={(e) => setColor(e.target.value)} />
+          <input className="hex" aria-label="主色 (#rrggbb)" value={color} onChange={(e) => setColor(e.target.value)} placeholder="#rrggbb" />
         </div>
         <div className="presets">
           {PRESET_COLORS.map((p) => (
@@ -236,8 +236,8 @@ export function ItemForm({ initial, wardrobe = [], onSubmit, onCancel }: Props) 
         </legend>
         {hasSub && (
           <div className="color-row">
-            <input type="color" value={normalizeHex(subColor) ?? '#000000'} onChange={(e) => setSubColor(e.target.value)} />
-            <input className="hex" value={subColor} onChange={(e) => setSubColor(e.target.value)} />
+            <input type="color" aria-label="副色を選ぶ" value={normalizeHex(subColor) ?? '#000000'} onChange={(e) => setSubColor(e.target.value)} />
+            <input className="hex" aria-label="副色 (#rrggbb)" value={subColor} onChange={(e) => setSubColor(e.target.value)} />
             <span className="muted">{colorLabel(subColor)}</span>
           </div>
         )}

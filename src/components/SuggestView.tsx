@@ -60,8 +60,9 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onCha
   const [location, setLocation] = useState<Location>(() => loadLocation());
   const [locating, setLocating] = useState<LocatingState>({ status: 'idle' });
   /**
-   * 気温欄の値の出所。手入力なら日付を変えるまで予報で上書きしない。
-   * 予報由来なら日付を変えた時点で消し、古い日の気温が残らないようにする。
+   * 気温欄の値の出所。手入力は地点を変えても残すが、日付を変えたら消して新しい日の予報を使う
+   * (別の日に手入力の気温が残ると、その日の予報が出ていても使われない)。
+   * 予報由来の値も日付や地点を変えた時点で消し、古い気温が残らないようにする。
    */
   const tempSource = useRef<'manual' | 'forecast' | null>(null);
   const [tempIsManual, setTempIsManual] = useState(false);
@@ -73,10 +74,14 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onCha
     setTempIsManual(false);
   };
 
+  const prevDate = useRef(dateStr);
   useEffect(() => {
-    if (tempSource.current === 'forecast') {
+    const dateChanged = prevDate.current !== dateStr;
+    prevDate.current = dateStr;
+    if (tempSource.current === 'forecast' || (dateChanged && tempSource.current === 'manual')) {
       setTempStr('');
       tempSource.current = null;
+      setTempIsManual(false);
     }
     setForecastMin(undefined);
     const date = parseDate(dateStr);
@@ -101,6 +106,11 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onCha
   }, [dateStr, location]);
 
   const changeTemp = (value: string) => {
+    // 欄を空にしたら手入力をやめて予報に戻す (表示だけ予報に戻り、条件は気温なしになっていた)
+    if (value.trim() === '' && forecast.status === 'ok') {
+      applyForecastTemp(forecast.data.max, forecast.data.min);
+      return;
+    }
     tempSource.current = 'manual';
     setTempIsManual(true);
     setForecastMin(undefined);
@@ -171,10 +181,15 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onCha
   const [page, setPage] = useState(0);
   const [results, setResults] = useState<Outfit[] | null>(null);
   const [stale, setStale] = useState(false);
-  const [worn, setWorn] = useState<{ outfit: Outfit; date: string } | null>(null);
+  /** 計算済みのページ。key (条件) が変わったら捨てる */
+  const pagesCache = useRef<{ key: unknown[]; pages: Outfit[][] }>({ key: [], pages: [] });
+  const [worn, setWorn] = useState<{ outfit: Outfit; date: string; rank: number } | null>(null);
 
-  // 条件が変わったら 1 ページ目に戻す
-  useEffect(() => setPage(0), [wardrobe, conditions, formality, mustInclude, freshness, colorMode, wearStats, recentOutfitIds]);
+  // 条件が変わったら 1 ページ目に戻す。着用履歴の変化 (「このコーデを着た」の記録) では戻さない。
+  // 戻すと 2 ページ目以降で着たときにページとトーストが消えていた
+  useEffect(() => setPage(0), [wardrobe, conditions, formality, mustInclude, freshness, colorMode]);
+  // 「着た」のトーストは条件やページが変わったら閉じる。着用履歴の変化 (= 記録そのもの) では閉じない
+  useEffect(() => setWorn(null), [wardrobe, conditions, formality, mustInclude, freshness, colorMode, page]);
 
   useEffect(() => {
     if (wardrobe.length === 0) {
@@ -183,30 +198,49 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onCha
     }
     setStale(true);
     const timer = setTimeout(() => {
-      const all = suggestOutfits(wardrobe, {
-        conditions,
-        formality: formality || undefined,
-        mustInclude: mustInclude.length ? mustInclude : undefined,
-        limit: PAGE_SIZE * (page + 1),
-        wearStats: wearLog.length ? wearStats : undefined,
-        freshnessWeight: FRESHNESS_PRESETS[freshness],
-        recentOutfitIds,
-        colorMode,
-      });
-      setResults(all.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE));
+      // 1 ページずつ、前のページに出した案を除いて選ぶ。
+      // limit を増やして後半を取る方式だと、選び直しで前のページと同じ案が混ざることがあった。
+      // 前のページの結果は条件が変わるまで覚えておき、「別の案を見る」では次の 1 ページだけを計算する
+      const key = [wardrobe, conditions, formality, mustInclude, freshness, colorMode, wearStats, recentOutfitIds, wearLog.length];
+      const cache = pagesCache.current;
+      if (cache.key.length !== key.length || cache.key.some((k, i) => k !== key[i])) pagesCache.current = { key, pages: [] };
+      const pages = pagesCache.current.pages;
+      for (let p = pages.length; p <= page; p++) {
+        if (p > 0 && pages[p - 1].length === 0) {
+          pages.push([]);
+          continue;
+        }
+        pages.push(
+          suggestOutfits(wardrobe, {
+            conditions,
+            formality: formality || undefined,
+            mustInclude: mustInclude.length ? mustInclude : undefined,
+            limit: PAGE_SIZE,
+            wearStats: wearLog.length ? wearStats : undefined,
+            // 着用履歴が無いと鮮度は全部 1.0 で順位は変わらないが、点数だけ底上げされるので 0 にする
+            freshnessWeight: wearLog.length ? FRESHNESS_PRESETS[freshness] : 0,
+            recentOutfitIds,
+            colorMode,
+            excludeIds: new Set(pages.flat().map((o) => o.id)),
+          }),
+        );
+      }
+      const current = pages[page];
+      setResults(current);
       setStale(false);
-      setWorn(null);
     }, RECALC_DELAY_MS);
     return () => clearTimeout(timer);
   }, [wardrobe, conditions, formality, mustInclude, freshness, colorMode, wearStats, recentOutfitIds, wearLog.length, page]);
 
   const wearOutfit = (outfit: Outfit) => {
+    // 日付欄が空のときの提案は今日の日付で作っているので、記録も今日にする (空のままだと再読み込みで消えていた)
+    const date = parseDate(dateStr) ? dateStr : toDateKey(new Date());
     onWear(
       outfit.items.map((i) => i.id),
-      dateStr,
+      date,
       outfit.id,
     );
-    setWorn({ outfit, date: dateStr });
+    setWorn({ outfit, date, rank: page * PAGE_SIZE + (results?.findIndex((o) => o.id === outfit.id) ?? 0) + 1 });
   };
   const undoWear = () => {
     if (!worn) return;
@@ -274,17 +308,17 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onCha
 
       {results && results.length === 0 && (
         <p className="empty">
-          {hasMust
-            ? '選んだアイテムを同時に着る組み合わせが作れませんでした。ワンピースとトップスのように両立しない指定があれば減らしてください。'
-            : page > 0
-              ? 'これ以上の案はありません。'
+          {page > 0
+            ? 'これ以上の案はありません。'
+            : hasMust
+              ? '選んだアイテムを同時に着る組み合わせが作れませんでした。ワンピースとトップスのように両立しない指定があれば減らしてください。'
               : '組み合わせを作れませんでした。トップスとボトムス（またはワンピース）がそれぞれ1点以上必要です。'}
         </p>
       )}
 
       {worn && (
         <div className="toast">
-          #{page * PAGE_SIZE + (results?.findIndex((o) => o.id === worn.outfit.id) ?? 0) + 1} のコーデを {worn.date} に着たとして記録しました。
+          #{worn.rank} のコーデを {worn.date} に着たとして記録しました。
           <button type="button" className="link" onClick={undoWear}>
             取り消す
           </button>
@@ -308,19 +342,23 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onCha
               />
             ))}
           </div>
-          <div className="pager">
-            {page > 0 && (
-              <button type="button" className="btn" onClick={() => setPage((p) => p - 1)}>
-                前の案に戻る
-              </button>
-            )}
-            {results.length === PAGE_SIZE && (
-              <button type="button" className="btn" onClick={() => setPage((p) => p + 1)}>
-                別の案を見る
-              </button>
-            )}
-          </div>
         </>
+      )}
+
+      {/* 案が尽きたページ (0 件) でも「前の案に戻る」で戻れるよう、ページャーは結果の外に置く */}
+      {results && (page > 0 || results.length === PAGE_SIZE) && (
+        <div className="pager">
+          {page > 0 && (
+            <button type="button" className="btn" onClick={() => setPage((p) => p - 1)}>
+              前の案に戻る
+            </button>
+          )}
+          {results.length === PAGE_SIZE && (
+            <button type="button" className="btn" onClick={() => setPage((p) => p + 1)}>
+              別の案を見る
+            </button>
+          )}
+        </div>
       )}
     </section>
   );

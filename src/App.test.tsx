@@ -12,6 +12,7 @@ vi.mock('./lib/weather', async (importOriginal) => {
 import App from './App';
 import { SAMPLE_WARDROBE } from './data/sample';
 import { saveWardrobe } from './lib/storage';
+import { closetTile } from './components/closetTestUtils';
 
 beforeEach(() => {
   localStorage.clear();
@@ -45,7 +46,7 @@ describe('App single screen', () => {
     fireEvent.click(screen.getByRole('button', { name: 'クローゼットから選ぶ' }));
     fireEvent.click(screen.getByRole('button', { name: '今の条件に合う服だけ' }));
     fireEvent.click(screen.getByRole('tab', { name: /シューズ/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'ブラックのローファー を選択' }));
+    fireEvent.click(closetTile('ブラックのローファー'));
     expect(screen.getAllByTestId('must-chip')).toHaveLength(1);
 
     fireEvent.click(screen.getByRole('button', { name: 'クローゼットを編集 ›' }));
@@ -66,7 +67,7 @@ describe('App single screen', () => {
     fireEvent.click(screen.getByRole('button', { name: 'クローゼットから選ぶ' }));
     fireEvent.click(screen.getByRole('button', { name: '今の条件に合う服だけ' }));
     fireEvent.click(screen.getByRole('tab', { name: /シューズ/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'ブラックのローファー を選択' }));
+    fireEvent.click(closetTile('ブラックのローファー'));
     fireEvent.click(screen.getByRole('button', { name: 'クローゼットを編集 ›' }));
     // 隠れたメイン画面にも同じ名前があるので、編集画面の中だけを見る
     const wardrobe = within(document.querySelector('.wardrobe') as HTMLElement);

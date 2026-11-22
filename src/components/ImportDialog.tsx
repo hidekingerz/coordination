@@ -22,12 +22,15 @@ export function ImportDialog({ existingCount, onApply, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
+  /** 読み込みに成功した取得元。取り込むときはこれを記憶する (読み込んだ後に欄を書き換えても、その値は記憶しない) */
+  const [loadedSource, setLoadedSource] = useState<string | null>(null);
   const [mode, setMode] = useState<MergeMode>('merge');
   const [showAllWarnings, setShowAllWarnings] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const fail = (e: unknown) => {
     setPreview(null);
+    setLoadedSource(null);
     setError((e as Error).message || '読み込みに失敗しました');
   };
 
@@ -37,6 +40,7 @@ export function ImportDialog({ existingCount, onApply, onClose }: Props) {
     try {
       const r = await fetchWardrobeFromSource(source);
       setPreview({ ...r, label: r.fileName ? `Gist: ${r.fileName}` : r.sourceUrl });
+      setLoadedSource(source.trim());
     } catch (e) {
       fail(e);
     } finally {
@@ -48,6 +52,7 @@ export function ImportDialog({ existingCount, onApply, onClose }: Props) {
     setError(null);
     try {
       setPreview({ ...parseImportDetailed(pasted), label: '貼り付けた JSON' });
+      setLoadedSource(null);
     } catch (e) {
       fail(e);
     }
@@ -57,6 +62,7 @@ export function ImportDialog({ existingCount, onApply, onClose }: Props) {
     setError(null);
     try {
       setPreview({ ...parseImportDetailed(await file.text()), label: `ファイル: ${file.name}` });
+      setLoadedSource(null);
     } catch (e) {
       fail(e);
     } finally {
@@ -66,7 +72,7 @@ export function ImportDialog({ existingCount, onApply, onClose }: Props) {
 
   const apply = () => {
     if (!preview) return;
-    if (preview.label.startsWith('Gist') || preview.label.startsWith('http')) saveLastSource(source.trim());
+    if (loadedSource) saveLastSource(loadedSource);
     onApply(preview.items, existingCount ? mode : 'replace', preview.wearLog);
   };
 
@@ -74,10 +80,10 @@ export function ImportDialog({ existingCount, onApply, onClose }: Props) {
 
   return (
     <div className="import-dialog">
-      <h3>クローゼットを取り込む</h3>
+      <h2>クローゼットを取り込む</h2>
 
       <section className="import-section">
-        <h4>Gist / URL から</h4>
+        <h3>Gist / URL から</h3>
         <p className="muted">
           Gist のページ URL、Gist の ID、Raw の URL のいずれでも読み込めます。Secret gist も URL があれば取得できます。
         </p>
@@ -96,7 +102,7 @@ export function ImportDialog({ existingCount, onApply, onClose }: Props) {
       </section>
 
       <section className="import-section">
-        <h4>JSON を貼り付け</h4>
+        <h3>JSON を貼り付け</h3>
         <textarea
           rows={5}
           placeholder='[{"name":"白のTシャツ","category":"トップス","color":"白","seasons":"春,夏","warmth":1}]'
@@ -124,9 +130,9 @@ export function ImportDialog({ existingCount, onApply, onClose }: Props) {
 
       {preview && (
         <section className="import-preview">
-          <h4>
+          <h3>
             {preview.items.length} 件を読み込みました <span className="muted">({preview.label})</span>
-          </h4>
+          </h3>
           {preview.wearLog?.length ? <p className="muted">着用履歴 {preview.wearLog.length} 件も取り込みます。</p> : null}
           <ul className="preview-list">
             {preview.items.slice(0, 8).map((i) => (

@@ -11,6 +11,7 @@ vi.mock('../lib/weather', async (importOriginal) => {
 });
 
 import { SuggestView } from './SuggestView';
+import { closetTile } from './closetTestUtils';
 
 function renderView() {
   return render(<SuggestView wardrobe={[]} wearLog={[]} onWear={() => {}} onUnwear={() => {}} onEdit={() => {}} onChangeWardrobe={() => {}} onImportWearLog={() => {}} />);
@@ -152,9 +153,9 @@ describe('SuggestView closet tiles', () => {
     openCloset();
     fireEvent.click(screen.getByRole('button', { name: '今の条件に合う服だけ' })); // 季節に左右されないよう全件表示
     fireEvent.click(screen.getByRole('tab', { name: /トップス/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'ライトブルーのオックスフォードシャツ を選択' }));
+    fireEvent.click(closetTile('ライトブルーのオックスフォードシャツ'));
     fireEvent.click(screen.getByRole('tab', { name: /シューズ/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'ブラックのローファー を選択' }));
+    fireEvent.click(closetTile('ブラックのローファー'));
 
     const chips = screen.getAllByTestId('must-chip');
     expect(chips.map((c) => c.textContent)).toEqual([expect.stringContaining('オックスフォードシャツ'), expect.stringContaining('ローファー')]);
@@ -178,10 +179,10 @@ describe('SuggestView closet tiles', () => {
     openCloset();
     fireEvent.click(screen.getByRole('button', { name: '今の条件に合う服だけ' }));
     fireEvent.click(screen.getByRole('tab', { name: /トップス/ }));
-    fireEvent.click(screen.getByRole('button', { name: '白の無地Tシャツ を選択' }));
+    fireEvent.click(closetTile('白の無地Tシャツ'));
     expect(document.querySelector('.outfits')?.getAttribute('aria-busy')).toBe('true');
     fireEvent.click(screen.getByRole('tab', { name: /ボトムス/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'インディゴデニム を選択' }));
+    fireEvent.click(closetTile('インディゴデニム'));
     expect(screen.getAllByTestId('must-chip')).toHaveLength(2);
     await waitFor(() => expect(document.querySelector('.outfits')?.getAttribute('aria-busy')).toBe('false'));
   });
@@ -197,9 +198,9 @@ describe('SuggestView must-include conflicts', () => {
     fireEvent.click(screen.getByRole('button', { name: '今の条件に合う服だけ' }));
     // 同じカテゴリは置き換えになるので、両立しない組み合わせはセットアップ + トップスで作る
     fireEvent.click(screen.getByRole('tab', { name: /ワンピース/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'ネイビーのセットアップ を選択' }));
+    fireEvent.click(closetTile('ネイビーのセットアップ'));
     fireEvent.click(screen.getByRole('tab', { name: /トップス/ }));
-    fireEvent.click(screen.getByRole('button', { name: '白の無地Tシャツ を選択' }));
+    fireEvent.click(closetTile('白の無地Tシャツ'));
     expect(await screen.findByText(/選んだアイテムを同時に着る組み合わせ/)).toBeTruthy();
     expect(screen.queryByText(/トップスとボトムス（またはワンピース）がそれぞれ1点以上必要/)).toBeNull();
   });
@@ -212,12 +213,12 @@ describe('SuggestView must-include conflicts', () => {
     openCloset();
     fireEvent.click(screen.getByRole('button', { name: '今の条件に合う服だけ' }));
     fireEvent.click(screen.getByRole('tab', { name: /トップス/ }));
-    fireEvent.click(screen.getByRole('button', { name: '白の無地Tシャツ を選択' }));
-    fireEvent.click(screen.getByRole('button', { name: 'ブラックのTシャツ を選択' }));
+    fireEvent.click(closetTile('白の無地Tシャツ'));
+    fireEvent.click(closetTile('ブラックのTシャツ'));
     const chips = screen.getAllByTestId('must-chip').map((c) => c.textContent);
     expect(chips).toHaveLength(1);
     expect(chips[0]).toContain('ブラックのTシャツ');
-    expect(screen.getByRole('button', { name: '白の無地Tシャツ を選択' }).getAttribute('aria-pressed')).toBe('false');
+    expect(closetTile('白の無地Tシャツ').getAttribute('aria-pressed')).toBe('false');
     await waitFor(() => expect(document.querySelector('.outfits')?.getAttribute('aria-busy')).toBe('false'));
     expect(screen.queryByText(/選んだアイテムを同時に着る組み合わせ/)).toBeNull();
   });
@@ -229,8 +230,8 @@ describe('SuggestView must-include conflicts', () => {
     await waitFor(() => expect(tempInput().value).toBe('20'));
     openCloset();
     fireEvent.click(screen.getByRole('button', { name: '今の条件に合う服だけ' }));
-    fireEvent.click(screen.getByRole('button', { name: 'グレーのカーディガン を選択' }));
-    fireEvent.click(screen.getByRole('button', { name: 'ネイビーのステンカラーコート を選択' }));
+    fireEvent.click(closetTile('グレーのカーディガン'));
+    fireEvent.click(closetTile('ネイビーのステンカラーコート'));
     expect(screen.getAllByTestId('must-chip')).toHaveLength(2);
     await waitFor(() => expect(document.querySelector('.outfits')?.getAttribute('aria-busy')).toBe('false'));
     const first = document.querySelector('.outfit')!.textContent ?? '';

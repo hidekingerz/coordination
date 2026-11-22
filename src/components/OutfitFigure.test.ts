@@ -86,3 +86,17 @@ describe('OutfitFigure accessory kinds', () => {
     kinds.forEach((k, i) => expect(htmls[i]).toContain(`data-part="accessory:${k}"`));
   });
 });
+
+describe('OutfitFigure: accent of a mid layer', () => {
+  it('paints the sub colour of a jacket worn on its own', () => {
+    const html = render([{ ...base, kind: 'outer', color: '#111111', accent: '#ff00aa', layer: 'mid' }]);
+    expect(html).toContain('fill="#ff00aa"');
+  });
+  it('paints the sub colour of a jacket worn under a coat', () => {
+    const html = render([
+      { ...base, kind: 'outer', color: '#111111', accent: '#ff00aa', layer: 'mid', itemId: 'j' },
+      { ...base, kind: 'outer', color: '#222222', layer: 'shell', itemId: 'c' },
+    ]);
+    expect(html).toContain('fill="#ff00aa"');
+  });
+});

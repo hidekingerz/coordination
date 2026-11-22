@@ -1,5 +1,5 @@
 import type { Formality } from '../types';
-import { colorFamily, evaluatePalette, hexToHsl, hueDistance, normalizeHex, type ColorFamily, type PaletteEvaluation } from './color';
+import { colorFamily, evaluatePalette, hexToHsl, hueDistance, isNeutral, normalizeHex, type ColorFamily, type PaletteEvaluation } from './color';
 
 /**
  * 色合わせの基準 (流儀)。色相環の一般理論で採点する「標準」に、
@@ -39,6 +39,8 @@ export interface ColorModeDef {
   toneOnToneBonus: number;
   /** 彩度 0.65 超の差し色があるときの減点。0 なら見ない */
   vividAccentPenalty: number;
+  /** 鮮やかな差し色で減点したときに ⚠ 行に出す注意 */
+  vividAccentWarning?: string;
   avoid: AvoidRule[];
   formality?: FormalityRule;
 }
@@ -69,6 +71,7 @@ export const COLOR_MODES: Record<ColorMode, ColorModeDef> = {
     ],
     toneOnToneBonus: 0.05,
     vividAccentPenalty: 0.08,
+    vividAccentWarning: 'イタリア流では鮮やかな差し色は控えめにします',
     avoid: [],
   },
   british: {
@@ -99,8 +102,10 @@ export interface ColorModeContext {
 }
 
 export interface ModedPaletteEvaluation extends PaletteEvaluation {
-  /** 避けたい配色だったときの注意。提案カードの ⚠ 行に出す */
+  /** 避けたい配色だったときの注意 (warnings の 1 件目) */
   warning?: string;
+  /** 減点した理由すべて。提案カードの ⚠ 行に出す (standard では付けない) */
+  warnings?: string[];
 }
 
 /** ボルドーの明度の上限。これ以下の red はボルドーとして照合する */
@@ -146,6 +151,7 @@ export function applyColorMode(base: PaletteEvaluation, hexes: string[], mode: C
   bonuses.sort((x, y) => y.bonus - x.bonus);
 
   let score = base.score;
+  const warnings: string[] = [];
   let scheme = base.scheme;
   if (bonuses.length) {
     // 一番大きい加点を採用し、2 件目以降はまとまりの良さとして小さく足す。
@@ -154,8 +160,11 @@ export function applyColorMode(base: PaletteEvaluation, hexes: string[], mode: C
     scheme = bonuses[0].name;
   }
 
-  const warnings: string[] = [];
-  if (def.vividAccentPenalty > 0 && hsls.some((c) => c.s > VIVID_S && c.l > 0.12 && c.l < 0.92)) score -= def.vividAccentPenalty;
+  // 差し色はベーシックカラー以外。彩度の高いネイビーのようなベーシックカラーは差し色に数えない
+  if (def.vividAccentPenalty > 0 && hsls.some((c) => !isNeutral(c) && c.s > VIVID_S && c.l > 0.12 && c.l < 0.92)) {
+    score -= def.vividAccentPenalty;
+    if (def.vividAccentWarning) warnings.push(def.vividAccentWarning);
+  }
   for (const a of def.avoid) {
     if (hasPair(tones, a.a, a.b)) {
       score -= a.penalty;
@@ -168,7 +177,7 @@ export function applyColorMode(base: PaletteEvaluation, hexes: string[], mode: C
     warnings.push(town.warning);
   }
 
-  return { ...base, score: Math.max(0, Math.min(1, score)), scheme, warning: warnings[0] };
+  return { ...base, score: Math.max(0, Math.min(1, score)), scheme, warning: warnings[0], warnings };
 }
 
 /** 2 件目以降の定番ペアに足す加点 */
