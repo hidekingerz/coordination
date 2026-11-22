@@ -24,7 +24,8 @@ function wearClass(wear: WearStats): string {
 
 export function ItemCard({ item, onEdit, onDelete, wear, onWearToday, compact }: Props) {
   return (
-    <div className={`item-card ${compact ? 'compact' : ''}`}>
+    // 服 1 点のまとまり。読み上げで「今日着た」「編集」がどの服のボタンか分かるよう、名前を付ける
+    <div className={`item-card ${compact ? 'compact' : ''}`} role="group" aria-label={item.name}>
       <div className="item-visual" style={{ background: item.color }}>
         {item.imageUrl ? <img src={item.imageUrl} alt={item.name} /> : null}
         {item.subColor ? <span className="item-subcolor" style={{ background: item.subColor }} /> : null}
