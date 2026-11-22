@@ -196,7 +196,7 @@ describe('colour names', () => {
     ['紺', 'navy'],
     ['デニム', 'navy'],
     ['ベージュ', 'beige'],
-    ['キャメル', 'beige'],
+    ['キャメル', 'brown'],
     ['茶', 'brown'],
     ['カーキ', 'khaki'],
     ['ボルドー', 'red'],
