@@ -49,3 +49,19 @@ describe('parseImportDetailed: warns about every filled-in field', () => {
     expect(warnings.some((w) => w.includes('テイスト'))).toBe(false);
   });
 });
+
+describe('parseImportDetailed: a row without id that would take the id of a row with one', () => {
+  it('tells them apart when the row with id comes first (an exported item, then a new colour typed by hand)', () => {
+    const first = parseImportDetailed(JSON.stringify([{ name: 'クルーネックT', category: 'トップス', brand: 'ユニクロ', color: '白' }])).items[0];
+    const { items, warnings } = parseImportDetailed(JSON.stringify([first, { name: 'クルーネックT', category: 'トップス', brand: 'ユニクロ', color: '黒' }]));
+    expect(new Set(items.map((i) => i.id)).size).toBe(2);
+    expect(items[0].id).toBe(first.id);
+    expect(warnings.some((w) => w.includes('同じ名前・カテゴリ・ブランド'))).toBe(true);
+  });
+  it('tells them apart when the row with id comes later', () => {
+    const first = parseImportDetailed(JSON.stringify([{ name: 'クルーネックT', category: 'トップス', brand: 'ユニクロ', color: '白' }])).items[0];
+    const { items } = parseImportDetailed(JSON.stringify([{ name: 'クルーネックT', category: 'トップス', brand: 'ユニクロ', color: '黒' }, first]));
+    expect(new Set(items.map((i) => i.id)).size).toBe(2);
+    expect(items[1].id).toBe(first.id);
+  });
+});

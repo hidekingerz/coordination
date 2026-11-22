@@ -62,8 +62,16 @@ export function parseImportDetailed(text: string): ImportResult {
 
   const warnings: string[] = [];
   const items: ClothingItem[] = [];
-  /** id を省いた行に作った ID の使用回数。色違いなど名前・カテゴリ・ブランドが同じ行を見分ける */
-  const generated = new Map<string, number>();
+  /**
+   * 使われている ID。id を省いた行の ID が、別の行 (id を書いた行も含む) と重なったら連番を付けて分ける。
+   * id を書いた行は前もって集めておき、後ろにあっても重ならないようにする
+   */
+  const used = new Set<string>(
+    arr.flatMap((raw) => {
+      const id = (raw as { id?: unknown } | null)?.id;
+      return typeof id === 'string' && id.trim() ? [id.trim()] : [];
+    }),
+  );
   arr.forEach((raw, idx) => {
     const r = coerceItem(raw, idx);
     if (!r) {
@@ -72,14 +80,16 @@ export function parseImportDetailed(text: string): ImportResult {
     }
     const hasOwnId = typeof (raw as { id?: unknown }).id === 'string' && Boolean((raw as { id: string }).id.trim());
     if (!hasOwnId) {
-      // 1 件目は今までどおりの ID のまま (既存の Gist を取り込み直しても ID が変わらない)。2 件目以降に連番を付ける
-      const n = (generated.get(r.item.id) ?? 0) + 1;
-      generated.set(r.item.id, n);
+      // 重ならなければ今までどおりの ID のまま (既存の Gist を取り込み直しても ID が変わらない)。重なったら連番を付ける
+      const baseId = r.item.id;
+      let n = 1;
+      while (used.has(n === 1 ? baseId : `${baseId}-${n}`)) n++;
       if (n > 1) {
-        r.item.id = `${r.item.id}-${n}`;
-        r.warnings.push(`${idx + 1}件目「${r.item.name}」: 同じ名前・カテゴリ・ブランドの服が先にあるので ID を分けました (色違いなら id を付けると確実です)`);
+        r.item.id = `${baseId}-${n}`;
+        r.warnings.push(`${idx + 1}件目「${r.item.name}」: 同じ名前・カテゴリ・ブランドの服がほかにあるので ID を分けました (色違いなら id を付けると確実です)`);
       }
     }
+    used.add(r.item.id);
     items.push(r.item);
     warnings.push(...r.warnings);
   });
