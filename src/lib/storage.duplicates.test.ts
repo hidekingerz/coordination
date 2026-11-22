@@ -38,3 +38,14 @@ describe('parseImportDetailed: items without id that would get the same id', () 
     expect(items.map((i) => i.id)).toEqual(['x', 'x']);
   });
 });
+
+describe('parseImportDetailed: warns about every filled-in field', () => {
+  it('says so when the taste was missing and casual was used', () => {
+    const { warnings } = parseImportDetailed(JSON.stringify([{ name: '白のレザースニーカー', category: '靴', color: 'white', seasons: '通年' }]));
+    expect(warnings.some((w) => w.includes('テイストが無いのでカジュアルにしました'))).toBe(true);
+  });
+  it('does not warn about the taste when it is given', () => {
+    const { warnings } = parseImportDetailed(JSON.stringify([{ name: 'A', category: 'tops', formality: 'きれいめ' }]));
+    expect(warnings.some((w) => w.includes('テイスト'))).toBe(false);
+  });
+});

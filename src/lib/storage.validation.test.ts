@@ -225,7 +225,7 @@ describe('colour names', () => {
 });
 
 describe('coerceItem: reading loose input', () => {
-  const read = (raw: Record<string, unknown>, index = 0) => coerceItem({ name: 'シャツ', category: 'tops', color: '白', seasons: '春', warmth: 2, ...raw }, index)!;
+  const read = (raw: Record<string, unknown>, index = 0) => coerceItem({ name: 'シャツ', category: 'tops', color: '白', seasons: '春', warmth: 2, formality: 'casual', ...raw }, index)!;
 
   it('rejects anything that is not an object with a name and a category', () => {
     for (const raw of [null, undefined, 'シャツ', 3, {}, { name: 'シャツ' }, { category: 'tops' }, { name: '  ', category: 'tops' }, { name: 'シャツ', category: '謎' }]) {
@@ -339,11 +339,12 @@ describe('coerceItem: reading loose input', () => {
     expect(r.warnings).toEqual([]);
   });
 
-  it('defaults formality to casual, warning only when a value was given', () => {
+  it('defaults formality to casual and says whether it was missing or unreadable', () => {
     expect(read({}).warnings).toEqual([]);
-    expect(read({}).item.formality).toBe('casual');
+    expect(read({ formality: undefined }).warnings).toEqual(['1件目「シャツ」: テイストが無いのでカジュアルにしました']);
+    expect(read({ formality: undefined }).item.formality).toBe('casual');
     expect(read({ formality: 'ゆるめ' }).warnings).toEqual(['1件目「シャツ」: テイストを解釈できずカジュアルにしました']);
-    expect(read({ テイスト: 'ゆるめ' }).warnings).toEqual(['1件目「シャツ」: テイストを解釈できずカジュアルにしました']);
+    expect(read({ formality: undefined, テイスト: 'ゆるめ' }).warnings).toEqual(['1件目「シャツ」: テイストを解釈できずカジュアルにしました']);
     expect(read({ formality: 3 }).warnings).toHaveLength(1);
   });
 

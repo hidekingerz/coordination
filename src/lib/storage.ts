@@ -243,7 +243,11 @@ export function coerceItem(raw: unknown, index = 0): { item: ClothingItem; warni
   let formality = parseFormality(o.formality ?? o.テイスト);
   if (!formality) {
     formality = 'casual';
-    if (o.formality !== undefined || o.テイスト !== undefined) warnings.push(`${label}: テイストを解釈できずカジュアルにしました`);
+    warnings.push(
+      o.formality !== undefined || o.テイスト !== undefined
+        ? `${label}: テイストを解釈できずカジュアルにしました`
+        : `${label}: テイストが無いのでカジュアルにしました`,
+    );
   }
 
   const shape = category === 'bottoms' ? parseBottomsShape(o.shape ?? o.形) : undefined;
