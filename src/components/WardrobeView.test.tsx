@@ -70,8 +70,8 @@ describe('WardrobeView: add, edit, delete', () => {
     fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }));
     expect(screen.queryByRole('heading', { name: 'アイテムを追加' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: '＋ アイテムを追加' }));
-    fireEvent.click(document.querySelector('.modal-backdrop')!);
-    expect(screen.queryByRole('heading', { name: 'アイテムを追加' })).toBeNull();
+    fireEvent.click(screen.getByRole('dialog', { name: 'アイテムを追加' }).parentElement!); // ダイアログの外 (背景)
+    expect(screen.queryByRole('dialog')).toBeNull();
     expect(p.onChange).not.toHaveBeenCalled();
   });
 
@@ -237,7 +237,7 @@ describe('WardrobeView: smaller paths', () => {
     fireEvent.click(screen.getByRole('button', { name: '閉じる' }));
     expect(screen.queryByRole('heading', { name: 'クローゼットを取り込む' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'インポート' }));
-    fireEvent.click(document.querySelector('.modal-backdrop')!);
-    expect(screen.queryByRole('heading', { name: 'クローゼットを取り込む' })).toBeNull();
+    fireEvent.click(screen.getByRole('dialog', { name: 'クローゼットを取り込む' }).parentElement!); // ダイアログの外 (背景)
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });

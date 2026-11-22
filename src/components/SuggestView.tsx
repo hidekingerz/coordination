@@ -300,7 +300,7 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onCha
 
       {importing && (
         <div className="modal-backdrop" onClick={() => setImporting(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="クローゼットを取り込む" onClick={(e) => e.stopPropagation()}>
             <ImportDialog existingCount={wardrobe.length} onApply={applyImport} onClose={() => setImporting(false)} />
           </div>
         </div>
@@ -330,7 +330,7 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onCha
 
       {results && results.length > 0 && (
         <>
-          <div className={`outfits ${stale ? 'stale' : ''}`} aria-busy={stale}>
+          <div className={`outfits ${stale ? 'stale' : ''}`} role="region" aria-label="コーデ提案" aria-busy={stale}>
             {results.map((o, idx) => (
               <OutfitCard
                 key={o.id}

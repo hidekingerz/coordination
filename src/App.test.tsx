@@ -2,12 +2,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { DailyTemperature } from './lib/weather';
+import type { Location } from './lib/location';
+import { stubForecastWith } from './test/forecastStub';
 
-const getForecast = vi.fn<(date: Date) => Promise<DailyTemperature>>();
-vi.mock('./lib/weather', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./lib/weather')>();
-  return { ...actual, getForecast: (date: Date) => getForecast(date) };
-});
+// 予報 API の答え。fetch の差し替えにつないでいるので、呼ばれた回数は API への問い合わせ回数
+const forecastApi = vi.fn<(date: Date, loc: Location) => Promise<DailyTemperature>>();
 
 import App from './App';
 import { SAMPLE_WARDROBE } from './data/sample';
@@ -15,18 +14,27 @@ import { saveWardrobe } from './lib/storage';
 import { closetTile } from './components/closetTestUtils';
 
 beforeEach(() => {
+  stubForecastWith(forecastApi);
   localStorage.clear();
-  getForecast.mockReset();
-  getForecast.mockResolvedValue({ max: 20, min: 12 });
+  forecastApi.mockReset();
+  forecastApi.mockResolvedValue({ max: 20, min: 12 });
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 describe('App single screen', () => {
   it('has no tab navigation and shows conditions, closet and suggestions together', async () => {
     saveWardrobe(SAMPLE_WARDROBE);
     render(<App />);
-    expect(document.querySelector('nav.tabs')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'コーデ提案' })).toBeNull();
+    // ヘッダーはアプリ名と説明だけ。画面を切り替えるナビやボタンは無い
+    const header = screen.getByRole('banner');
+    expect(within(header).queryByRole('navigation')).toBeNull();
+    expect(within(header).queryAllByRole('button')).toHaveLength(0);
+    expect(within(header).queryAllByRole('link')).toHaveLength(0);
+    expect(screen.queryByRole('navigation')).toBeNull();
+    expect(screen.queryByRole('tablist')).toBeNull(); // クローゼットを開くまでタブも無い
     expect(screen.getByTestId('cond-status')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'クローゼットから選ぶ' })).toBeTruthy();
     await screen.findAllByRole('article');
@@ -51,7 +59,9 @@ describe('App single screen', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'クローゼットを編集 ›' }));
     expect(screen.getByRole('button', { name: '＋ アイテムを追加' })).toBeTruthy();
-    expect(screen.getByTestId('cond-status').closest('[hidden]')).toBeTruthy();
+    // メイン画面は見えなくなる (隠れた要素はロールで探しても出てこない)
+    expect(screen.queryByRole('region', { name: 'クローゼット' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '明日' })).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: '← コーデ提案に戻る' }));
     expect(screen.queryByRole('button', { name: '＋ アイテムを追加' })).toBeNull();
@@ -69,14 +79,12 @@ describe('App single screen', () => {
     fireEvent.click(screen.getByRole('tab', { name: /シューズ/ }));
     fireEvent.click(closetTile('ブラックのローファー'));
     fireEvent.click(screen.getByRole('button', { name: 'クローゼットを編集 ›' }));
-    // 隠れたメイン画面にも同じ名前があるので、編集画面の中だけを見る
-    const wardrobe = within(document.querySelector('.wardrobe') as HTMLElement);
-    const card = wardrobe.getByText('ブラックのローファー').closest('.item-card') as HTMLElement;
-    fireEvent.click(within(card).getByRole('button', { name: '削除' }));
+    // 隠れたメイン画面の提案カードはロールでは見えないので、見えているのは編集画面のカードだけ
+    fireEvent.click(within(screen.getByRole('group', { name: 'ブラックのローファー' })).getByRole('button', { name: '削除' }));
     fireEvent.click(screen.getByRole('button', { name: '← コーデ提案に戻る' }));
     expect(screen.queryAllByTestId('must-chip')).toHaveLength(0);
     // 消えた id が裏で効き続けて提案が 0 件になってはいけない (再計算が終わるまで待つ)
-    await waitFor(() => expect(document.querySelector('.outfits')?.getAttribute('aria-busy')).toBe('false'));
+    await waitFor(() => expect(screen.getByRole('region', { name: 'コーデ提案', busy: false })).toBeTruthy());
     expect(screen.getAllByRole('article').length).toBeGreaterThan(0);
     expect(screen.queryByText(/組み合わせを作れませんでした/)).toBeNull();
   });

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 
 // 画像の読み込み (Canvas) は jsdom では動かないので、読み込んだ画素だけを差し替える
 const loadImageData = vi.fn();
@@ -33,7 +33,7 @@ function renderPicker(imageUrl = '') {
   return { onPick, onExtracted };
 }
 const chooseFile = () => {
-  const input = document.querySelector('input[type=file]') as HTMLInputElement;
+  const input = screen.getByLabelText('画像ファイル') as HTMLInputElement;
   fireEvent.change(input, { target: { files: [new File(['x'], 'shirt.png', { type: 'image/png' })] } });
 };
 
@@ -62,7 +62,7 @@ describe('ImageColorPicker', () => {
     const { onPick } = renderPicker();
     chooseFile();
     const first = (await screen.findAllByRole('listitem'))[0];
-    const hex = first.querySelector('code')!.textContent!;
+    const hex = within(first).getByText(/^#[0-9a-f]{6}$/).textContent!;
     fireEvent.click(screen.getAllByRole('button', { name: '主色に' })[0]);
     fireEvent.click(screen.getAllByRole('button', { name: '副色に' })[0]);
     expect(onPick.mock.calls).toEqual([
@@ -101,7 +101,7 @@ describe('ImageColorPicker', () => {
     const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
     loadImageData.mockResolvedValueOnce(picture([[200, 30, 40]])).mockResolvedValueOnce({ ...picture([[30, 40, 120]]), previewUrl: 'blob:second' });
     renderPicker();
-    const input = document.querySelector('input[type=file]') as HTMLInputElement;
+    const input = screen.getByLabelText('画像ファイル') as HTMLInputElement;
     const click = vi.spyOn(input, 'click').mockImplementation(() => {});
     fireEvent.click(screen.getByRole('button', { name: '写真・画像ファイルを選ぶ' }));
     expect(click).toHaveBeenCalled();

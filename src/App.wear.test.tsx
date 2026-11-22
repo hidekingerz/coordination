@@ -2,9 +2,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { DailyTemperature } from './lib/weather';
+import type { Location } from './lib/location';
+import { stubForecastWith } from './test/forecastStub';
 
-const getForecast = vi.fn<(date: Date) => Promise<DailyTemperature>>();
-vi.mock('./lib/weather', async (importOriginal) => ({ ...(await importOriginal<typeof import('./lib/weather')>()), getForecast: (d: Date) => getForecast(d) }));
+// 予報 API の答え。fetch の差し替えにつないでいるので、呼ばれた回数は API への問い合わせ回数
+const forecastApi = vi.fn<(date: Date, loc: Location) => Promise<DailyTemperature>>();
 
 import App from './App';
 import { SAMPLE_WARDROBE } from './data/sample';
@@ -13,17 +15,19 @@ import { saveWardrobe } from './lib/storage';
 const log = () => JSON.parse(localStorage.getItem('coordination.wearlog.v1') ?? '[]') as { itemId: string; date: string; outfitId?: string }[];
 const settle = async () => {
   await act(() => new Promise<void>((r) => setTimeout(r, 250)));
-  await waitFor(() => expect(document.querySelector('[aria-busy="true"]')).toBeNull());
+  await waitFor(() => expect(screen.queryByRole('region', { name: 'コーデ提案', busy: true })).toBeNull());
 };
 
 beforeEach(() => {
+  stubForecastWith(forecastApi);
   localStorage.clear();
-  getForecast.mockReset();
-  getForecast.mockResolvedValue({ max: 15, min: 8 });
+  forecastApi.mockReset();
+  forecastApi.mockResolvedValue({ max: 15, min: 8 });
 });
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('App: wear history', () => {
@@ -70,8 +74,9 @@ describe('App: wear history', () => {
   it('closes the import dialog on the backdrop without changes', () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'Gist / JSON から取り込む' }));
-    fireEvent.click(document.querySelector('.modal-backdrop')!);
-    expect(screen.queryByRole('heading', { name: 'クローゼットを取り込む' })).toBeNull();
+    // ダイアログの外 (背景) を押すと閉じる
+    fireEvent.click(screen.getByRole('dialog', { name: 'クローゼットを取り込む' }).parentElement!);
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });
 

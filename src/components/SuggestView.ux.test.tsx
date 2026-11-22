@@ -2,23 +2,26 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { DailyTemperature } from '../lib/weather';
+import type { Location } from '../lib/location';
+import { stubForecastWith } from '../test/forecastStub';
 
-const getForecast = vi.fn<(date: Date, loc: { name: string }) => Promise<DailyTemperature>>();
-vi.mock('../lib/weather', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../lib/weather')>();
-  return { ...actual, getForecast: (date: Date, loc: { name: string }) => getForecast(date, loc) };
-});
+// 予報 API の答え。fetch の差し替えにつないでいるので、呼ばれた回数は API への問い合わせ回数
+const forecastApi = vi.fn<(date: Date, loc: Location) => Promise<DailyTemperature>>();
 
 import { SuggestView } from './SuggestView';
 import { SAMPLE_WARDROBE } from '../data/sample';
 import type { WearLog } from '../lib/wear';
 
 beforeEach(() => {
+  stubForecastWith(forecastApi);
   localStorage.clear();
-  getForecast.mockReset();
-  getForecast.mockResolvedValue({ max: 20, min: 12 });
+  forecastApi.mockReset();
+  forecastApi.mockResolvedValue({ max: 20, min: 12 });
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 function renderView(wearLog: WearLog = []) {
   return render(<SuggestView wardrobe={SAMPLE_WARDROBE} wearLog={wearLog} onWear={() => {}} onUnwear={() => {}} onEdit={() => {}} onChangeWardrobe={() => {}} onImportWearLog={() => {}} />);
@@ -79,7 +82,7 @@ describe('always-visible conditions', () => {
   });
 
   it('opens the temperature input by itself when the forecast is unavailable', async () => {
-    getForecast.mockRejectedValue(new Error('offline'));
+    forecastApi.mockRejectedValue(new Error('offline'));
     renderView();
     await screen.findByText(/気温を入力してください/);
     expect(screen.getByPlaceholderText('例: 18')).toBeTruthy();
@@ -112,13 +115,12 @@ describe('compact outfit cards', () => {
     renderView();
     const [card] = await screen.findAllByRole('article');
     expect(within(card).getByRole('button', { name: 'このコーデを着た' })).toBeTruthy();
-    const details = card.querySelector('details') as HTMLDetailsElement;
-    expect(details).toBeTruthy();
+    // 根拠 (✓) と内訳のバーは「根拠を見る」の折りたたみの中にあり、最初は閉じている
+    const details = within(card).getByText('根拠を見る').closest('details') as HTMLDetailsElement;
     expect(details.open).toBe(false);
-    expect(within(card).getByText('根拠を見る')).toBeTruthy();
-    // 根拠 (✓) とバーは details の中
-    expect(details.querySelector('.reasons')).toBeTruthy();
-    expect(details.querySelector('.breakdown')).toBeTruthy();
+    expect(within(details).getAllByRole('meter').map((m) => m.getAttribute('aria-label'))).toEqual(['色', '厚さ', 'テイスト', '季節']);
+    expect(within(details).getAllByRole('listitem').length).toBeGreaterThan(0);
+    expect(within(card).getAllByRole('meter')).toHaveLength(4); // 折りたたみの外にバーは無い
   });
 });
 

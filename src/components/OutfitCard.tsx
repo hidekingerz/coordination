@@ -74,13 +74,15 @@ export function OutfitCard({ outfit, rank, wearStats, worn, onWear }: Props) {
 }
 
 function Bar({ label, value }: { label: string; value: number }) {
+  const pct = Math.round(value * 100);
   return (
-    <div className="bar">
+    // 内訳のバー。読み上げでも「色 88」のように値が伝わるよう meter にする
+    <div className="bar" role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
       <span className="bar-label">{label}</span>
       <span className="bar-track">
-        <span className="bar-fill" style={{ width: `${Math.round(value * 100)}%` }} />
+        <span className="bar-fill" style={{ width: `${pct}%` }} />
       </span>
-      <span className="bar-value">{Math.round(value * 100)}</span>
+      <span className="bar-value">{pct}</span>
     </div>
   );
 }
