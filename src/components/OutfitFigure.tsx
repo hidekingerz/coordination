@@ -33,7 +33,7 @@ export function OutfitFigure({ parts, width = 120 }: Props) {
         <rect x="62" y="106" width="15" height="104" rx="5" />
       </g>
       {parts.map((p) => (
-        <g key={p.itemId} className="figure-part" data-part={`${p.kind}:${p.variant}`} data-layer={p.layer}>
+        <g key={p.itemId} className="figure-part">
           <title>{p.name}</title>
           {shapeOf(p, hasMid)}
         </g>

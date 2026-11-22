@@ -15,7 +15,8 @@ function renderForm(initial?: ClothingItem) {
 const nameInput = () => screen.getByPlaceholderText('例: 白の無地Tシャツ');
 const brandInput = () => screen.getByPlaceholderText('例: ユニクロ');
 const categorySelect = () => screen.getByLabelText('カテゴリ') as HTMLSelectElement;
-const submit = () => fireEvent.submit(document.querySelector('form')!);
+// 利用者と同じく「追加」(編集なら「保存」) ボタンで送信する。ボタンが送信しなくなったら落ちる
+const submit = () => fireEvent.click(screen.getByRole('button', { name: /^(追加|保存)$/ }));
 
 describe('ItemForm validation', () => {
   it('requires a name', () => {

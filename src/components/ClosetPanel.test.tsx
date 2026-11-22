@@ -6,7 +6,7 @@ import { SAMPLE_WARDROBE } from '../data/sample';
 import { buildConditions } from '../lib/season';
 import { buildWearStats } from '../lib/wear';
 import type { ClothingItem } from '../types';
-import { closetTile, closetTileNames } from './closetTestUtils';
+import { closetGrid, closetTile, closetTileNames } from './closetTestUtils';
 
 afterEach(() => {
   cleanup();
@@ -76,7 +76,7 @@ describe('ClosetPanel tabs and filter', () => {
     renderOpen({ wardrobe: big });
     expect(tabs()).toEqual(['アウター 20/20', 'トップス 45/45', 'ボトムス 30/30', 'シューズ 20/20', '小物 35/35']);
     fireEvent.click(screen.getByRole('tab', { name: 'トップス 45/45' }));
-    expect(document.querySelectorAll('.closet-grid .closet-tile')).toHaveLength(45);
+    expect(within(closetGrid()).getAllByRole('button')).toHaveLength(45);
   });
 });
 
@@ -193,13 +193,16 @@ describe('ClosetPanel collapsed by default', () => {
     const close = screen.getByRole('button', { name: 'クローゼットを閉じる' });
     expect(close.getAttribute('aria-expanded')).toBe('true');
     expect(screen.getAllByRole('tab').length).toBeGreaterThan(0);
-    expect(localStorage.getItem('coordination.closet.open')).toBe('1');
 
     cleanup();
     renderPanel(); // 次に開いたときも開いたまま
     expect(screen.getByRole('button', { name: 'クローゼットを閉じる' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'クローゼットを閉じる' }));
-    expect(localStorage.getItem('coordination.closet.open')).toBe('0');
+    expect(screen.queryAllByRole('tab')).toHaveLength(0);
+    // 閉じたことも覚えている (保存の形式ではなく、開き直したときの状態で確かめる)
+    cleanup();
+    renderPanel();
+    expect(screen.getByRole('button', { name: 'クローゼットから選ぶ' })).toBeTruthy();
     expect(screen.queryAllByRole('tab')).toHaveLength(0);
   });
 
@@ -215,17 +218,16 @@ describe('ClosetPanel tile name', () => {
     renderOpen();
     const tile = closetTile('ネイビーのステンカラーコート');
     expect(tile.getAttribute('title')).toBe('ネイビーのステンカラーコート');
-    expect(tile.querySelector('strong')?.className).toBe('tile-name');
   });
 });
 
 describe('ClosetPanel filter chip', () => {
-  it('is styled as an on/off toggle, not a filled primary button', () => {
+  it('is an on/off toggle that starts on', () => {
+    // 見た目 (塗りつぶさずチェック印で見せる) は jsdom では測れないので、押した状態だけを見る
     renderOpen();
-    expect(filterChip().classList.contains('toggle')).toBe(true);
-    expect(filterChip().classList.contains('on')).toBe(true);
+    expect(filterChip().getAttribute('aria-pressed')).toBe('true');
     fireEvent.click(filterChip());
-    expect(filterChip().classList.contains('on')).toBe(false);
+    expect(filterChip().getAttribute('aria-pressed')).toBe('false');
   });
 });
 
@@ -265,18 +267,19 @@ describe('ClosetPanel tab overflow hint', () => {
   it('marks the tab row when it overflows to the right, and clears the mark once scrolled to the end', () => {
     widths(600, 320); // jsdom は寸法を持たないので、はみ出している状態を作る
     renderOpen();
-    const wrap = screen.getByRole('tablist').parentElement!;
-    expect(wrap.getAttribute('data-more')).toBe('true');
+    // 右端のフェードは CSS の疑似要素なので、jsdom では印 (data-more) で見る。印はタブ列かその外側のどちらにあってもよい
+    const mark = () => screen.getByRole('tablist').closest('[data-more]')!.getAttribute('data-more');
+    expect(mark()).toBe('true');
     const list = screen.getByRole('tablist');
     Object.defineProperty(list, 'scrollLeft', { configurable: true, value: 280 });
     fireEvent.scroll(list);
-    expect(wrap.getAttribute('data-more')).toBe('false');
+    expect(mark()).toBe('false');
   });
 
   it('shows no mark when every tab fits', () => {
     widths(300, 320);
     renderOpen();
-    expect(screen.getByRole('tablist').parentElement!.getAttribute('data-more')).toBe('false');
+    expect(screen.getByRole('tablist').closest('[data-more]')!.getAttribute('data-more')).toBe('false');
   });
 });
 
@@ -303,13 +306,13 @@ describe('ClosetPanel tile brand', () => {
   it('shows the brand on the tile so similar names can be told apart', () => {
     renderOpen({ wardrobe: [withBrand] });
     const tile = closetTile('ステンカラーコート');
-    expect(within(tile).getByText('ユニクロ').className).toBe('tile-brand');
+    expect(within(tile).getByText('ユニクロ')).toBeTruthy();
     expect(tile.getAttribute('title')).toBe('ユニクロ ステンカラーコート');
   });
 
   it('omits the brand line when the item has none', () => {
     renderOpen();
     const tile = closetTile('ネイビーのステンカラーコート');
-    expect(tile.querySelector('.tile-brand')).toBeNull();
+    expect(tile.textContent).toBe('ネイビーのステンカラーコート'); // ブランドの行が無い
   });
 });

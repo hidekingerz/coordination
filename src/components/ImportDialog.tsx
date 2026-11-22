@@ -119,6 +119,7 @@ export function ImportDialog({ existingCount, onApply, onClose }: Props) {
           <input
             ref={fileRef}
             type="file"
+            aria-label="JSON ファイル"
             accept="application/json,.json,text/plain"
             hidden
             onChange={(e) => e.target.files?.[0] && loadFromFile(e.target.files[0])}

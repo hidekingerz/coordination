@@ -79,6 +79,7 @@ export function ImageColorPicker({ imageUrl, onPick, onExtracted }: Props) {
         <input
           ref={fileRef}
           type="file"
+          aria-label="画像ファイル"
           accept="image/*"
           capture="environment"
           hidden

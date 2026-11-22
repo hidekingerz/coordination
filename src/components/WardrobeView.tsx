@@ -177,7 +177,7 @@ export function WardrobeView({ wardrobe, wearLog, onChange, onWear, onUnwear, on
 
       {editing && (
         <div className="modal-backdrop" onClick={() => setEditing(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label={editing === 'new' ? 'アイテムを追加' : 'アイテムを編集'} onClick={(e) => e.stopPropagation()}>
             <ItemForm
               initial={editing === 'new' ? undefined : editing}
               wardrobe={wardrobe}
@@ -217,7 +217,7 @@ export function WardrobeView({ wardrobe, wearLog, onChange, onWear, onUnwear, on
 
       {importing && (
         <div className="modal-backdrop" onClick={() => setImporting(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="クローゼットを取り込む" onClick={(e) => e.stopPropagation()}>
             <ImportDialog existingCount={wardrobe.length} onApply={applyImport} onClose={() => setImporting(false)} />
           </div>
         </div>

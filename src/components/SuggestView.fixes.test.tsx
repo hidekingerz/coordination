@@ -1,13 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { DailyTemperature } from '../lib/weather';
+import type { Location } from '../lib/location';
+import { stubForecastWith } from '../test/forecastStub';
 
-const getForecast = vi.fn<(date: Date) => Promise<DailyTemperature>>();
-vi.mock('../lib/weather', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../lib/weather')>();
-  return { ...actual, getForecast: (date: Date) => getForecast(date) };
-});
+// 予報 API の答え。fetch の差し替えにつないでいるので、呼ばれた回数は API への問い合わせ回数
+const forecastApi = vi.fn<(date: Date, loc: Location) => Promise<DailyTemperature>>();
 
 import App from '../App';
 import { SAMPLE_WARDROBE } from '../data/sample';
@@ -19,15 +18,19 @@ const sleep = (ms: number) => act(() => new Promise<void>((r) => setTimeout(r, m
 /** 提案の再計算 (150ms のデバウンス) が終わるまで待つ */
 const settle = async () => {
   await sleep(250);
-  await waitFor(() => expect(document.querySelector('[aria-busy="true"]')).toBeNull());
+  await waitFor(() => expect(screen.queryByRole('region', { name: 'コーデ提案', busy: true })).toBeNull());
 };
 
 beforeEach(() => {
+  stubForecastWith(forecastApi);
   localStorage.clear();
-  getForecast.mockReset();
-  getForecast.mockResolvedValue({ max: 15, min: 8 });
+  forecastApi.mockReset();
+  forecastApi.mockResolvedValue({ max: 15, min: 8 });
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 describe('「このコーデを着た」のトースト', () => {
   it('stays after the recalculation that the new wear record triggers, so it can be undone', async () => {
@@ -94,7 +97,7 @@ describe('案が尽きたページ', () => {
 
 describe('気温の手入力を消したとき', () => {
   it('goes back to the forecast for both the status line and the conditions', async () => {
-    getForecast.mockResolvedValue({ max: 30, min: 25 });
+    forecastApi.mockResolvedValue({ max: 30, min: 25 });
     saveWardrobe(SAMPLE_WARDROBE);
     render(<App />);
     await screen.findByText(/最高 30℃/);
@@ -110,7 +113,7 @@ describe('気温の手入力を消したとき', () => {
 
 describe('日付を変えたとき', () => {
   it('drops the manually typed temperature and uses the forecast of the new date', async () => {
-    getForecast.mockImplementation(async (date: Date) => (date.getDate() === new Date().getDate() ? { max: 15, min: 8 } : { max: 28, min: 22 }));
+    forecastApi.mockImplementation(async (date: Date) => (date.getDate() === new Date().getDate() ? { max: 15, min: 8 } : { max: 28, min: 22 }));
     saveWardrobe(SAMPLE_WARDROBE);
     render(<App />);
     await screen.findByText(/最高 15℃/);
@@ -146,8 +149,8 @@ describe('点数 (着用履歴なし)', () => {
     render(<App />);
     const card = (await screen.findAllByRole('article'))[0];
     await settle();
-    const score = Number(card.querySelector('.score')!.textContent!.replace('点', ''));
-    const [c, w, f, s] = [...card.querySelectorAll('.bar-value')].map((e) => Number(e.textContent));
+    const score = Number(within(card).getByTitle('総合スコア').textContent!.replace('点', ''));
+    const [c, w, f, s] = within(card).getAllByRole('meter').map((m) => Number(m.getAttribute('aria-valuenow')));
     expect(Math.abs(score - (c * 0.45 + w * 0.3 + f * 0.15 + s * 0.1))).toBeLessThanOrEqual(1);
   });
 });
@@ -176,8 +179,7 @@ describe('編集画面の「今日着た」→「取り消す」', () => {
     localStorage.setItem('coordination.wearlog.v1', JSON.stringify(before));
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'クローゼットを編集 ›' }));
-    const card = screen.getByText('ボルドーのニット').closest('.item-card') as HTMLElement;
-    fireEvent.click(card.querySelector('button[title="今日この服を着たことを記録"]')!);
+    fireEvent.click(within(screen.getByRole('group', { name: 'ボルドーのニット' })).getByRole('button', { name: '今日着た' }));
     // 既に記録がある服は記録し直さない (コーデの記録が服だけの記録に置き換わり、取り消すと消えていた)
     expect(screen.getByText(/「ボルドーのニット」は今日着たとして記録済みです/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: '取り消す' })).toBeNull();
@@ -193,7 +195,7 @@ describe('2 ページ目以降', () => {
     await settle();
     fireEvent.click(screen.getByRole('button', { name: '別の案を見る' }));
     await settle();
-    expect(document.querySelector('.rank')?.textContent).toBe('#6');
+    expect(within(screen.getAllByRole('article')[0]).getByText(/^#\d+$/).textContent).toBe('#6');
     fireEvent.click(screen.getAllByRole('button', { name: 'このコーデを着た' })[0]);
     await settle();
     expect(screen.getByText(/#6 のコーデを .* に着たとして記録しました/)).toBeTruthy();
@@ -204,14 +206,15 @@ describe('2 ページ目以降', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-01-15T10:00:00'));
     try {
-      getForecast.mockResolvedValue({ max: 19, min: 12 });
+      forecastApi.mockResolvedValue({ max: 19, min: 12 });
       saveWardrobe(SAMPLE_WARDROBE);
       render(<App />);
       await screen.findByText(/最高 19℃/);
       await settle();
       const seen: string[] = [];
       for (let p = 0; p < 3; p++) {
-        for (const a of screen.getAllByRole('article')) seen.push([...a.querySelectorAll('.item-card strong')].map((s) => s.textContent).sort().join('+'));
+        // カードのアイテムは服の名前のグループ (人の絵の部品にも同じ名前があるので重複を除く)
+        for (const a of screen.getAllByRole('article')) seen.push([...new Set(within(a).getAllByRole('group').map((g) => g.getAttribute('aria-label')))].sort().join('+'));
         fireEvent.click(screen.getByRole('button', { name: '別の案を見る' }));
         await settle();
       }

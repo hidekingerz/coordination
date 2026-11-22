@@ -103,7 +103,7 @@ describe('ImportDialog: pasted JSON', () => {
 describe('ImportDialog: a file', () => {
   it('opens the file chooser from ファイルを選ぶ', () => {
     renderDialog();
-    const input = document.querySelector('input[type=file]') as HTMLInputElement;
+    const input = screen.getByLabelText('JSON ファイル') as HTMLInputElement;
     const click = vi.spyOn(input, 'click').mockImplementation(() => {});
     fireEvent.click(screen.getByRole('button', { name: 'ファイルを選ぶ' }));
     expect(click).toHaveBeenCalled();
@@ -111,7 +111,7 @@ describe('ImportDialog: a file', () => {
 
   it('reads the chosen file and names it in the preview', async () => {
     renderDialog();
-    const input = document.querySelector('input[type=file]') as HTMLInputElement;
+    const input = screen.getByLabelText('JSON ファイル') as HTMLInputElement;
     const file = new File([JSON_TEXT], 'closet.json', { type: 'application/json' });
     fireEvent.change(input, { target: { files: [file] } });
     expect((await screen.findByRole('heading', { name: /1 件を読み込みました/ })).textContent).toContain('ファイル: closet.json');
@@ -119,7 +119,7 @@ describe('ImportDialog: a file', () => {
 
   it('shows an error when the file is not usable', async () => {
     renderDialog();
-    const input = document.querySelector('input[type=file]') as HTMLInputElement;
+    const input = screen.getByLabelText('JSON ファイル') as HTMLInputElement;
     fireEvent.change(input, { target: { files: [new File(['[]'], 'empty.json')] } });
     expect(await screen.findByText('有効なアイテムがありません')).toBeTruthy();
   });
