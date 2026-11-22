@@ -134,3 +134,52 @@ describe('日付を変えたとき', () => {
     expect(screen.getByTestId('cond-status').textContent).toContain('5℃ (手入力)');
   });
 });
+
+describe('点数 (着用履歴なし)', () => {
+  it('is the weighted sum of the four aspects shown in the breakdown', async () => {
+    // 点数が低めになる 2 点だけのクローゼット (差が出やすい)。履歴が無いのに鮮度 10% が混ざると 4 観点の和から離れる
+    saveWardrobe([
+      { id: 't', name: '黄色のTシャツ', category: 'tops', color: '#e3c94a', seasons: ['summer'], warmth: 1, formality: 'casual', tags: [], createdAt: '' },
+      { id: 'b', name: '赤のスラックス', category: 'bottoms', color: '#d62828', seasons: ['summer'], warmth: 1, formality: 'formal', tags: [], createdAt: '' },
+    ]);
+    render(<App />);
+    const card = (await screen.findAllByRole('article'))[0];
+    await settle();
+    const score = Number(card.querySelector('.score')!.textContent!.replace('点', ''));
+    const [c, w, f, s] = [...card.querySelectorAll('.bar-value')].map((e) => Number(e.textContent));
+    expect(Math.abs(score - (c * 0.45 + w * 0.3 + f * 0.15 + s * 0.1))).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('日付欄を空にして「このコーデを着た」', () => {
+  it('records with today, the date the suggestions were made for', async () => {
+    saveWardrobe(SAMPLE_WARDROBE);
+    render(<App />);
+    await screen.findAllByRole('article');
+    fireEvent.click(screen.getByRole('button', { name: '日付を指定' }));
+    fireEvent.change(screen.getByLabelText('日付を選択'), { target: { value: '' } });
+    await settle();
+    fireEvent.click(screen.getAllByRole('button', { name: 'このコーデを着た' })[0]);
+    const log = JSON.parse(localStorage.getItem('coordination.wearlog.v1') ?? '[]') as { date: string }[];
+    expect(log.length).toBeGreaterThan(0);
+    for (const e of log) expect(e.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe('編集画面の「今日着た」→「取り消す」', () => {
+  it('leaves a record that was already there untouched, so nothing is lost', async () => {
+    const today = new Date();
+    const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    saveWardrobe(SAMPLE_WARDROBE);
+    const before = [{ itemId: 's-tops-5', date: key, outfitId: 's-tops-5+s-bottoms-2' }];
+    localStorage.setItem('coordination.wearlog.v1', JSON.stringify(before));
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'クローゼットを編集 ›' }));
+    const card = screen.getByText('ボルドーのニット').closest('.item-card') as HTMLElement;
+    fireEvent.click(card.querySelector('button[title="今日この服を着たことを記録"]')!);
+    // 既に記録がある服は記録し直さない (コーデの記録が服だけの記録に置き換わり、取り消すと消えていた)
+    expect(screen.getByText(/「ボルドーのニット」は今日着たとして記録済みです/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '取り消す' })).toBeNull();
+    expect(JSON.parse(localStorage.getItem('coordination.wearlog.v1') ?? '[]')).toEqual(before);
+  });
+});

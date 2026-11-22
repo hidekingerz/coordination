@@ -206,7 +206,8 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onCha
           mustInclude: mustInclude.length ? mustInclude : undefined,
           limit: PAGE_SIZE,
           wearStats: wearLog.length ? wearStats : undefined,
-          freshnessWeight: FRESHNESS_PRESETS[freshness],
+          // 着用履歴が無いと鮮度は全部 1.0 で順位は変わらないが、点数だけ底上げされるので 0 にする
+          freshnessWeight: wearLog.length ? FRESHNESS_PRESETS[freshness] : 0,
           recentOutfitIds,
           colorMode,
           excludeIds: shown,
@@ -221,12 +222,14 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onCha
   }, [wardrobe, conditions, formality, mustInclude, freshness, colorMode, wearStats, recentOutfitIds, wearLog.length, page]);
 
   const wearOutfit = (outfit: Outfit) => {
+    // 日付欄が空のときの提案は今日の日付で作っているので、記録も今日にする (空のままだと再読み込みで消えていた)
+    const date = parseDate(dateStr) ? dateStr : toDateKey(new Date());
     onWear(
       outfit.items.map((i) => i.id),
-      dateStr,
+      date,
       outfit.id,
     );
-    setWorn({ outfit, date: dateStr, rank: page * PAGE_SIZE + (results?.findIndex((o) => o.id === outfit.id) ?? 0) + 1 });
+    setWorn({ outfit, date, rank: page * PAGE_SIZE + (results?.findIndex((o) => o.id === outfit.id) ?? 0) + 1 });
   };
   const undoWear = () => {
     if (!worn) return;

@@ -30,7 +30,7 @@ export function WardrobeView({ wardrobe, wearLog, onChange, onWear, onUnwear, on
   const [query, setQuery] = useState('');
   const [importing, setImporting] = useState(false);
   const [sort, setSort] = useState<SortMode>('category');
-  const [lastWear, setLastWear] = useState<{ item: ClothingItem; date: string } | null>(null);
+  const [lastWear, setLastWear] = useState<{ item: ClothingItem; date: string; already?: boolean } | null>(null);
   const today = toDateKey(new Date());
   const stats = useMemo(() => buildWearStats(wearLog, today), [wearLog, today]);
 
@@ -64,11 +64,16 @@ export function WardrobeView({ wardrobe, wearLog, onChange, onWear, onUnwear, on
   }, [wardrobe, stats]);
 
   const wearToday = (item: ClothingItem) => {
+    // 既に今日の記録があれば記録し直さない (コーデの記録が置き換わり、「取り消す」で元の記録まで消えていた)
+    if (statsFor(stats, item.id).daysSince === 0) {
+      setLastWear({ item, date: today, already: true });
+      return;
+    }
     onWear([item.id], today);
     setLastWear({ item, date: today });
   };
   const undoWear = () => {
-    if (!lastWear) return;
+    if (!lastWear || lastWear.already) return;
     onUnwear([lastWear.item.id], lastWear.date);
     setLastWear(null);
   };
@@ -194,10 +199,16 @@ export function WardrobeView({ wardrobe, wearLog, onChange, onWear, onUnwear, on
 
       {lastWear && (
         <div className="toast">
-          「{lastWear.item.name}」を今日着たとして記録しました。
-          <button type="button" className="link" onClick={undoWear}>
-            取り消す
-          </button>
+          {lastWear.already ? (
+            <>「{lastWear.item.name}」は今日着たとして記録済みです。</>
+          ) : (
+            <>
+              「{lastWear.item.name}」を今日着たとして記録しました。
+              <button type="button" className="link" onClick={undoWear}>
+                取り消す
+              </button>
+            </>
+          )}
           <button type="button" className="link" onClick={() => setLastWear(null)}>
             閉じる
           </button>
