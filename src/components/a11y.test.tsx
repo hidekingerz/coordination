@@ -78,3 +78,33 @@ describe('heading order (axe: heading-order)', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'アイテムを追加' })).toBeTruthy();
   });
 });
+
+import { ClosetPanel } from './ClosetPanel';
+import { buildWearStats } from '../lib/wear';
+import { closetTile } from './closetTestUtils';
+
+describe('closet tiles (axe: label-content-name-mismatch)', () => {
+  it('reads out what the tile shows (brand, name, last worn) and leaves the state to aria-pressed', () => {
+    const item = { ...SAMPLE_WARDROBE.find((i) => i.id === 's-tops-1')!, seasons: ['spring', 'summer', 'autumn', 'winter'] as const };
+    localStorage.setItem('coordination.closet.open', '1');
+    render(
+      <ClosetPanel
+        wardrobe={[{ ...item, seasons: [...item.seasons] }]}
+        conditions={buildConditions(new Date('2026-11-22T12:00:00'), 15, 8)}
+        wearStats={buildWearStats([{ itemId: 's-tops-1', date: '2026-11-19' }], '2026-11-22')}
+        selected={['s-tops-1']}
+        onToggle={() => {}}
+        onClear={() => {}}
+        onEdit={() => {}}
+        onImport={() => {}}
+        onLoadSample={() => {}}
+      />,
+    );
+    const tile = closetTile('白の無地Tシャツ');
+    expect(tile.getAttribute('aria-label')).toBeNull();
+    expect(tile.getAttribute('aria-pressed')).toBe('true');
+    expect(tile.textContent).toContain('ユニクロ');
+    expect(tile.textContent).toContain('3日前');
+    localStorage.clear();
+  });
+});
