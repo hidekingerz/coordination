@@ -428,6 +428,8 @@ describe('colorMode in scoring (#67)', () => {
 
   it('passes the mode through suggestOutfits', () => {
     const res = suggestOutfits(outfit, { conditions: c, colorMode: 'italian' });
-    expect(res[0].scheme).toBe('アズーロ・エ・マローネ');
+    // 上位は点数順。ジャケットなしの組 (茶 × 茶のトーン・オン・トーン) が先に来るので、ジャケット入りの組を見る
+    const withJacket = res.find((o) => o.items.some((i) => i.id === navyJacket.id));
+    expect(withJacket?.scheme).toBe('アズーロ・エ・マローネ');
   });
 });
