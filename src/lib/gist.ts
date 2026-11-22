@@ -29,7 +29,8 @@ export function resolveSource(input: string): GistSource {
 
   let url: URL;
   try {
-    url = new URL(/^https?:\/\//i.test(text) ? text : `https://${text}`);
+    // スキームが無いときだけ https:// を補う (ftp:// などに https:// を足すと、意味の違う URL になって取得に失敗していた)
+    url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(text) ? text : `https://${text}`);
   } catch {
     throw new Error('URL の形式が正しくありません');
   }

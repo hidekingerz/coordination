@@ -12,7 +12,7 @@ import App from '../App';
 import { SAMPLE_WARDROBE } from '../data/sample';
 import type { ClothingItem } from '../types';
 import { saveWardrobe } from '../lib/storage';
-import { closetTile } from './closetTestUtils';
+import { closetTile } from '../test/closet';
 
 const sleep = (ms: number) => act(() => new Promise<void>((r) => setTimeout(r, ms)));
 /** 提案の再計算 (150ms のデバウンス) が終わるまで待つ */

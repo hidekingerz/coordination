@@ -9,8 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "mutate": "mutator --include 'src/lib/**/*.ts' --since main",
-    "mutate:all": "mutator --include 'src/lib/**/*.ts' --reporter text --reporter html"
+    "mutate": "mutator --since main",
+    "mutate:all": "mutator --reporter text --reporter html"
   },
   "dependencies": {
     "react": "^18.3.1",

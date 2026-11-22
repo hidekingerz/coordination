@@ -38,3 +38,37 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  # PR で変えたコードだけミューテーションテストを回し、結果をジョブの概要に出す (目安。PR は止めない)
+  mutation:
+    name: mutation (changed code)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # ベースブランチとの差分を取るため
+
+      - uses: jdx/mise-action@v2
+        with:
+          install: true
+          cache: true
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: npm-${{ runner.os }}-
+
+      - run: npm ci
+      - name: Mutation test on the diff
+        run: |
+          npx mutator --since "origin/${{ github.base_ref }}" --reporter text 2>&1 | tee mutation.txt
+          {
+            echo '## ミューテーションテスト (変えたコード)'
+            echo '```'
+            tail -n 40 mutation.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

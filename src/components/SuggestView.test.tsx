@@ -10,7 +10,7 @@ import { stubForecastWith } from '../test/forecastStub';
 const forecastApi = vi.fn<(date: Date, loc: Location) => Promise<DailyTemperature>>();
 
 import { SuggestView } from './SuggestView';
-import { closetTile } from './closetTestUtils';
+import { closetTile } from '../test/closet';
 
 function renderView() {
   return render(<SuggestView wardrobe={[]} wearLog={[]} onWear={() => {}} onUnwear={() => {}} onEdit={() => {}} onChangeWardrobe={() => {}} onImportWearLog={() => {}} />);
