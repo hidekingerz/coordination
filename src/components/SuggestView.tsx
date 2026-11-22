@@ -181,10 +181,13 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onCha
   const [page, setPage] = useState(0);
   const [results, setResults] = useState<Outfit[] | null>(null);
   const [stale, setStale] = useState(false);
+  /** 計算済みのページ。key (条件) が変わったら捨てる */
+  const pagesCache = useRef<{ key: unknown[]; pages: Outfit[][] }>({ key: [], pages: [] });
   const [worn, setWorn] = useState<{ outfit: Outfit; date: string; rank: number } | null>(null);
 
-  // 条件が変わったら 1 ページ目に戻す
-  useEffect(() => setPage(0), [wardrobe, conditions, formality, mustInclude, freshness, colorMode, wearStats, recentOutfitIds]);
+  // 条件が変わったら 1 ページ目に戻す。着用履歴の変化 (「このコーデを着た」の記録) では戻さない。
+  // 戻すと 2 ページ目以降で着たときにページとトーストが消えていた
+  useEffect(() => setPage(0), [wardrobe, conditions, formality, mustInclude, freshness, colorMode]);
   // 「着た」のトーストは条件やページが変わったら閉じる。着用履歴の変化 (= 記録そのもの) では閉じない
   useEffect(() => setWorn(null), [wardrobe, conditions, formality, mustInclude, freshness, colorMode, page]);
 
@@ -196,25 +199,33 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onCha
     setStale(true);
     const timer = setTimeout(() => {
       // 1 ページずつ、前のページに出した案を除いて選ぶ。
-      // limit を増やして後半を取る方式だと、選び直しで前のページと同じ案が混ざることがあった
-      const shown = new Set<string>();
-      let current: Outfit[] = [];
-      for (let p = 0; p <= page; p++) {
-        current = suggestOutfits(wardrobe, {
-          conditions,
-          formality: formality || undefined,
-          mustInclude: mustInclude.length ? mustInclude : undefined,
-          limit: PAGE_SIZE,
-          wearStats: wearLog.length ? wearStats : undefined,
-          // 着用履歴が無いと鮮度は全部 1.0 で順位は変わらないが、点数だけ底上げされるので 0 にする
-          freshnessWeight: wearLog.length ? FRESHNESS_PRESETS[freshness] : 0,
-          recentOutfitIds,
-          colorMode,
-          excludeIds: shown,
-        });
-        for (const o of current) shown.add(o.id);
-        if (current.length === 0) break;
+      // limit を増やして後半を取る方式だと、選び直しで前のページと同じ案が混ざることがあった。
+      // 前のページの結果は条件が変わるまで覚えておき、「別の案を見る」では次の 1 ページだけを計算する
+      const key = [wardrobe, conditions, formality, mustInclude, freshness, colorMode, wearStats, recentOutfitIds, wearLog.length];
+      const cache = pagesCache.current;
+      if (cache.key.length !== key.length || cache.key.some((k, i) => k !== key[i])) pagesCache.current = { key, pages: [] };
+      const pages = pagesCache.current.pages;
+      for (let p = pages.length; p <= page; p++) {
+        if (p > 0 && pages[p - 1].length === 0) {
+          pages.push([]);
+          continue;
+        }
+        pages.push(
+          suggestOutfits(wardrobe, {
+            conditions,
+            formality: formality || undefined,
+            mustInclude: mustInclude.length ? mustInclude : undefined,
+            limit: PAGE_SIZE,
+            wearStats: wearLog.length ? wearStats : undefined,
+            // 着用履歴が無いと鮮度は全部 1.0 で順位は変わらないが、点数だけ底上げされるので 0 にする
+            freshnessWeight: wearLog.length ? FRESHNESS_PRESETS[freshness] : 0,
+            recentOutfitIds,
+            colorMode,
+            excludeIds: new Set(pages.flat().map((o) => o.id)),
+          }),
+        );
       }
+      const current = pages[page];
       setResults(current);
       setStale(false);
     }, RECALC_DELAY_MS);

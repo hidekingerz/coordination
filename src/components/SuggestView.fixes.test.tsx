@@ -184,3 +184,40 @@ describe('編集画面の「今日着た」→「取り消す」', () => {
     expect(JSON.parse(localStorage.getItem('coordination.wearlog.v1') ?? '[]')).toEqual(before);
   });
 });
+
+describe('2 ページ目以降', () => {
+  it('keeps the toast when an outfit on page 2 is worn, and stays on page 2', async () => {
+    saveWardrobe(SAMPLE_WARDROBE);
+    render(<App />);
+    await screen.findAllByRole('article');
+    await settle();
+    fireEvent.click(screen.getByRole('button', { name: '別の案を見る' }));
+    await settle();
+    expect(document.querySelector('.rank')?.textContent).toBe('#6');
+    fireEvent.click(screen.getAllByRole('button', { name: 'このコーデを着た' })[0]);
+    await settle();
+    expect(screen.getByText(/#6 のコーデを .* に着たとして記録しました/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: '取り消す' })).toBeTruthy();
+  });
+
+  it('never shows an outfit twice across pages (1/15, 19℃, where limit-and-slice used to repeat one)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-01-15T10:00:00'));
+    try {
+      getForecast.mockResolvedValue({ max: 19, min: 12 });
+      saveWardrobe(SAMPLE_WARDROBE);
+      render(<App />);
+      await screen.findByText(/最高 19℃/);
+      await settle();
+      const seen: string[] = [];
+      for (let p = 0; p < 3; p++) {
+        for (const a of screen.getAllByRole('article')) seen.push([...a.querySelectorAll('.item-card strong')].map((s) => s.textContent).sort().join('+'));
+        fireEvent.click(screen.getByRole('button', { name: '別の案を見る' }));
+        await settle();
+      }
+      expect(new Set(seen).size).toBe(seen.length);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

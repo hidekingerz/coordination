@@ -64,3 +64,16 @@ describe('suggestOutfits: excludeIds for the next page', () => {
     for (const o of second) expect(first.map((f) => f.id)).not.toContain(o.id);
   });
 });
+
+describe('scoreOutfit: every colour-mode deduction reaches the card', () => {
+  it('lists both british deductions (navy × black, brown in town) in the outfit warnings', async () => {
+    const { scoreOutfit } = await import('./outfit');
+    const items = [
+      mk('jk', 'outer', { color: '#1f2a44', formality: 'smart' }),
+      mk('tp', 'tops', { color: '#111111', formality: 'smart' }),
+      mk('pt', 'bottoms', { color: '#5c4a3a', formality: 'smart' }),
+    ];
+    const o = scoreOutfit(items, { conditions: buildConditions(new Date('2026-10-15T12:00:00'), 18), formality: 'smart', colorMode: 'british' });
+    expect(o.warnings.filter((w) => w.startsWith('英国流'))).toHaveLength(2);
+  });
+});
