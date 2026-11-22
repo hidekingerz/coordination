@@ -96,7 +96,7 @@ body {
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: flex-start; justify-content: center; padding: 24px 12px; overflow: auto; z-index: 10; }
 .modal { background: var(--card); border-radius: var(--radius); width: 100%; max-width: 520px; padding: 20px; border: 1px solid var(--border); }
 .item-form { display: flex; flex-direction: column; gap: 12px; }
-.item-form h3 { margin: 0 0 4px; }
+.item-form h2 { margin: 0 0 4px; font-size: 1.17rem; }
 .item-form label { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; }
 .item-form label.inline { flex-direction: row; align-items: center; gap: 6px; }
 .item-form input:not([type='checkbox']):not([type='color']):not([type='range']), .item-form select {
@@ -151,7 +151,7 @@ body {
 
 /* インポートダイアログ */
 .import-dialog { display: flex; flex-direction: column; gap: 14px; }
-.import-dialog h3 { margin: 0; }
+.import-dialog h2 { margin: 0; font-size: 1.17rem; }
 .import-dialog h4 { margin: 0 0 6px; font-size: 0.95rem; }
 .import-section { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
 .import-section p.muted { margin: 0 0 8px; }

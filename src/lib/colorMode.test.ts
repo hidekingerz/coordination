@@ -117,3 +117,13 @@ describe('colorMode: every deduction is shown as a warning', () => {
     expect(evaluatePaletteIn([NAVY, YELLOW], 'standard').warnings ?? []).toEqual([]);
   });
 });
+
+describe('colorMode: the vivid-accent deduction is for accents only', () => {
+  it('does not treat a saturated navy (a basic colour) as a vivid accent', () => {
+    const vividNavy = '#000080';
+    const r = evaluatePaletteIn([vividNavy, BROWN], 'italian');
+    expect(r.scheme).toBe('アズーロ・エ・マローネ');
+    expect(r.score).toBeGreaterThan(evaluatePalette([vividNavy, BROWN]).score);
+    expect(r.warnings ?? []).toEqual([]);
+  });
+});

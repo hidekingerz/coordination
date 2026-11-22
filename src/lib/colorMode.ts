@@ -1,5 +1,5 @@
 import type { Formality } from '../types';
-import { colorFamily, evaluatePalette, hexToHsl, hueDistance, normalizeHex, type ColorFamily, type PaletteEvaluation } from './color';
+import { colorFamily, evaluatePalette, hexToHsl, hueDistance, isNeutral, normalizeHex, type ColorFamily, type PaletteEvaluation } from './color';
 
 /**
  * 色合わせの基準 (流儀)。色相環の一般理論で採点する「標準」に、
@@ -160,7 +160,8 @@ export function applyColorMode(base: PaletteEvaluation, hexes: string[], mode: C
     scheme = bonuses[0].name;
   }
 
-  if (def.vividAccentPenalty > 0 && hsls.some((c) => c.s > VIVID_S && c.l > 0.12 && c.l < 0.92)) {
+  // 差し色はベーシックカラー以外。彩度の高いネイビーのようなベーシックカラーは差し色に数えない
+  if (def.vividAccentPenalty > 0 && hsls.some((c) => !isNeutral(c) && c.s > VIVID_S && c.l > 0.12 && c.l < 0.92)) {
     score -= def.vividAccentPenalty;
     if (def.vividAccentWarning) warnings.push(def.vividAccentWarning);
   }

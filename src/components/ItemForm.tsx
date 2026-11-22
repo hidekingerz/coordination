@@ -103,7 +103,7 @@ export function ItemForm({ initial, wardrobe = [], onSubmit, onCancel }: Props) 
 
   return (
     <form className="item-form" onSubmit={handleSubmit}>
-      <h3>{initial ? 'アイテムを編集' : 'アイテムを追加'}</h3>
+      <h2>{initial ? 'アイテムを編集' : 'アイテムを追加'}</h2>
 
       <label>
         名前

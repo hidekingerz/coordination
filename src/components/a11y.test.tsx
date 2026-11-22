@@ -71,3 +71,10 @@ describe('status-line links (axe: label-content-name-mismatch)', () => {
     expect(screen.getByRole('button', { name: /^東京/ }).textContent).toBe('東京 ▾');
   });
 });
+
+describe('heading order (axe: heading-order)', () => {
+  it('uses a level-2 heading in the item form', () => {
+    render(<ItemForm onSubmit={() => {}} onCancel={() => {}} />);
+    expect(screen.getByRole('heading', { level: 2, name: 'アイテムを追加' })).toBeTruthy();
+  });
+});
