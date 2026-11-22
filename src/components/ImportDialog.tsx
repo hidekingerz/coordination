@@ -83,7 +83,7 @@ export function ImportDialog({ existingCount, onApply, onClose }: Props) {
       <h2>クローゼットを取り込む</h2>
 
       <section className="import-section">
-        <h4>Gist / URL から</h4>
+        <h3>Gist / URL から</h3>
         <p className="muted">
           Gist のページ URL、Gist の ID、Raw の URL のいずれでも読み込めます。Secret gist も URL があれば取得できます。
         </p>
@@ -102,7 +102,7 @@ export function ImportDialog({ existingCount, onApply, onClose }: Props) {
       </section>
 
       <section className="import-section">
-        <h4>JSON を貼り付け</h4>
+        <h3>JSON を貼り付け</h3>
         <textarea
           rows={5}
           placeholder='[{"name":"白のTシャツ","category":"トップス","color":"白","seasons":"春,夏","warmth":1}]'
@@ -130,9 +130,9 @@ export function ImportDialog({ existingCount, onApply, onClose }: Props) {
 
       {preview && (
         <section className="import-preview">
-          <h4>
+          <h3>
             {preview.items.length} 件を読み込みました <span className="muted">({preview.label})</span>
-          </h4>
+          </h3>
           {preview.wearLog?.length ? <p className="muted">着用履歴 {preview.wearLog.length} 件も取り込みます。</p> : null}
           <ul className="preview-list">
             {preview.items.slice(0, 8).map((i) => (

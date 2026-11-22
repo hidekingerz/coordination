@@ -152,7 +152,7 @@ body {
 /* インポートダイアログ */
 .import-dialog { display: flex; flex-direction: column; gap: 14px; }
 .import-dialog h2 { margin: 0; font-size: 1.17rem; }
-.import-dialog h4 { margin: 0 0 6px; font-size: 0.95rem; }
+.import-dialog h3 { margin: 0 0 6px; font-size: 0.95rem; }
 .import-section { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
 .import-section p.muted { margin: 0 0 8px; }
 .import-row { display: flex; gap: 8px; align-items: center; }
