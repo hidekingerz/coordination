@@ -11,7 +11,7 @@ const forecastApi = vi.fn<(date: Date, loc: Location) => Promise<DailyTemperatur
 import App from './App';
 import { SAMPLE_WARDROBE } from './data/sample';
 import { saveWardrobe } from './lib/storage';
-import { closetTile } from './components/closetTestUtils';
+import { closetTile } from './test/closet';
 
 beforeEach(() => {
   stubForecastWith(forecastApi);

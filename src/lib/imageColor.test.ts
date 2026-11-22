@@ -87,6 +87,57 @@ describe('extractPalette', () => {
     expect(r.colors[0].share).toBeCloseTo(1, 5);
   });
 
+  it('reports a cut-out photo with a transparent background as background removed', () => {
+    // 切り抜き画像 (外周が透明) の真ん中に紺の服
+    const px = makeImage(40, 40, () => [31, 42, 68]);
+    for (let y = 0; y < 40; y++) for (let x = 0; x < 40; x++) if (x < 8 || x >= 32 || y < 4 || y >= 36) px[(y * 40 + x) * 4 + 3] = 0;
+    const r = extractPalette(px, 40, 40);
+    expect(r.colors).toHaveLength(1);
+    expect(hexDist(r.colors[0].hex, '#1f2a44')).toBeLessThan(12);
+  });
+
+  it('reports one colour for a garment shaded in two close tones (a fold or a heather)', () => {
+    // 左右で少し違う赤 (距離 20 程度)。別の色として 2 つ出さず、1 色にまとめる
+    const px = makeImage(40, 40, (x, y) => (x < 4 || x >= 36 || y < 4 || y >= 36 ? [255, 255, 255] : x < 20 ? [200, 30, 40] : [214, 40, 52]));
+    const r = extractPalette(px, 40, 40);
+    expect(r.backgroundRemoved).toBe(true);
+    expect(r.colors).toHaveLength(1);
+    expect(hexDist(r.colors[0].hex, '#cf232e')).toBeLessThan(30);
+    expect(r.colors[0].share).toBeCloseTo(1, 5);
+  });
+
+  it('reports one colour for a garment with a smooth gradient, not several close ones', () => {
+    // 左から右へ少しずつ明るくなる赤。色の候補は何本かに分かれるが、互いに近いので 1 色にまとめて返す
+    const px = makeImage(60, 30, (x) => [160 + x, 20 + Math.round(x / 2), 30 + Math.round(x / 2)]);
+    const r = extractPalette(px, 60, 30, { removeBackground: false });
+    expect(r.colors).toHaveLength(1);
+    expect(r.colors[0].share).toBeCloseTo(1, 5);
+  });
+
+  it('treats transparent pixels on the edge as background together with the plain backdrop', () => {
+    // 白い背景の一部が透明 (切り抜きの途中) でも、つながった背景として除く
+    const px = makeImage(40, 40, (x, y) => (x < 6 || x >= 34 || y < 6 || y >= 34 ? [250, 250, 250] : [31, 42, 68]));
+    for (let x = 0; x < 40; x++) px[x * 4 + 3] = 0; // 上の 1 行を透明に
+    const r = extractPalette(px, 40, 40);
+    expect(r.backgroundRemoved).toBe(true);
+    expect(r.colors).toHaveLength(1);
+    expect(hexDist(r.colors[0].hex, '#1f2a44')).toBeLessThan(12);
+  });
+
+  it('keeps at most maxColors colours, largest first, and drops colours under 3%', () => {
+    // 6 本の縦縞 (幅を変えて面積に差をつける) と、1 列だけの細い線
+    const stripes: [number, RGB][] = [[12, [200, 30, 40]], [9, [30, 40, 160]], [7, [40, 150, 60]], [5, [230, 200, 40]], [4, [120, 40, 140]], [2, [20, 20, 20]], [1, [240, 120, 20]]];
+    const columns: RGB[] = stripes.flatMap(([n, c]) => Array.from({ length: n }, () => c));
+    const px = makeImage(columns.length, 30, (x) => columns[x]);
+    const r = extractPalette(px, columns.length, 30, { removeBackground: false, maxColors: 4 });
+    expect(r.colors).toHaveLength(4);
+    const shares = r.colors.map((c) => c.share);
+    expect(shares).toEqual([...shares].sort((a, b) => b - a));
+    const all = extractPalette(px, columns.length, 30, { removeBackground: false, maxColors: 10 });
+    expect(all.colors.every((c) => c.share >= 0.03)).toBe(true);
+    expect(all.colors.some((c) => hexDist(c.hex, '#f07814') < 40)).toBe(false); // 1 列 (2.5%) のオレンジは出さない
+  });
+
   it('suggestSubColor rejects a tiny or similar second colour', () => {
     expect(suggestSubColor([{ hex: '#000000', share: 0.9 }, { hex: '#ffffff', share: 0.1 }])).toBeNull();
     expect(suggestSubColor([{ hex: '#808080', share: 0.6 }, { hex: '#8a8a8a', share: 0.4 }])).toBeNull();

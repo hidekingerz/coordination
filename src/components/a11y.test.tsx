@@ -81,7 +81,7 @@ describe('heading order (axe: heading-order)', () => {
 
 import { ClosetPanel } from './ClosetPanel';
 import { buildWearStats } from '../lib/wear';
-import { closetTile } from './closetTestUtils';
+import { closetTile } from '../test/closet';
 
 describe('closet tiles (axe: label-content-name-mismatch)', () => {
   it('reads out what the tile shows (brand, name, last worn) and leaves the state to aria-pressed', () => {

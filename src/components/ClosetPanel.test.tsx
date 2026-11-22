@@ -6,7 +6,7 @@ import { SAMPLE_WARDROBE } from '../data/sample';
 import { buildConditions } from '../lib/season';
 import { buildWearStats } from '../lib/wear';
 import type { ClothingItem } from '../types';
-import { closetGrid, closetTile, closetTileNames } from './closetTestUtils';
+import { closetGrid, closetTile, closetTileNames } from '../test/closet';
 
 afterEach(() => {
   cleanup();
