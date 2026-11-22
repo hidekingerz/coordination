@@ -60,8 +60,9 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onCha
   const [location, setLocation] = useState<Location>(() => loadLocation());
   const [locating, setLocating] = useState<LocatingState>({ status: 'idle' });
   /**
-   * 気温欄の値の出所。手入力なら日付を変えるまで予報で上書きしない。
-   * 予報由来なら日付を変えた時点で消し、古い日の気温が残らないようにする。
+   * 気温欄の値の出所。手入力は地点を変えても残すが、日付を変えたら消して新しい日の予報を使う
+   * (別の日に手入力の気温が残ると、その日の予報が出ていても使われない)。
+   * 予報由来の値も日付や地点を変えた時点で消し、古い気温が残らないようにする。
    */
   const tempSource = useRef<'manual' | 'forecast' | null>(null);
   const [tempIsManual, setTempIsManual] = useState(false);
@@ -73,10 +74,14 @@ export function SuggestView({ wardrobe, wearLog, onWear, onUnwear, onEdit, onCha
     setTempIsManual(false);
   };
 
+  const prevDate = useRef(dateStr);
   useEffect(() => {
-    if (tempSource.current === 'forecast') {
+    const dateChanged = prevDate.current !== dateStr;
+    prevDate.current = dateStr;
+    if (tempSource.current === 'forecast' || (dateChanged && tempSource.current === 'manual')) {
       setTempStr('');
       tempSource.current = null;
+      setTempIsManual(false);
     }
     setForecastMin(undefined);
     const date = parseDate(dateStr);

@@ -65,7 +65,7 @@ interface ColorModeDef {
 
 - `SuggestOptions.colorMode?: ColorMode` を追加。未指定は `'standard'`。
 - `scoreOutfit` は `evaluatePalette` の結果を `applyColorMode(base, hexes, mode, { formality })` に通す。
-  `formality` は条件の「テイスト」指定があればそれ、無ければコーデの多数派 (`dominantFormality`)。
+  `formality` は条件の「テイスト」指定があればそれ、無ければコーデの多数派 (`dominantFormality`)。同数ならカジュアル → きれいめ → フォーマルの順に先のもの。
 - `breakdown.color` と `scheme` はモード適用後の値。
 
 ### 3.3 記憶

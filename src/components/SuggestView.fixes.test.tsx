@@ -106,3 +106,31 @@ describe('気温の手入力を消したとき', () => {
     expect(screen.getByText(/でよさそう/).getAttribute('title')).toContain('目安の厚さ 1/5');
   });
 });
+
+describe('日付を変えたとき', () => {
+  it('drops the manually typed temperature and uses the forecast of the new date', async () => {
+    getForecast.mockImplementation(async (date: Date) => (date.getDate() === new Date().getDate() ? { max: 15, min: 8 } : { max: 28, min: 22 }));
+    saveWardrobe(SAMPLE_WARDROBE);
+    render(<App />);
+    await screen.findByText(/最高 15℃/);
+    fireEvent.click(screen.getByRole('button', { name: '気温を変える' }));
+    fireEvent.change(screen.getByPlaceholderText('例: 18'), { target: { value: '5' } });
+    expect(screen.getByTestId('cond-status').textContent).toContain('5℃ (手入力)');
+    fireEvent.click(screen.getByRole('button', { name: '明日' }));
+    await screen.findByText(/最高 28℃/);
+    expect(screen.getByTestId('cond-status').textContent).not.toContain('手入力');
+    expect(screen.getByText(/でよさそう/).getAttribute('title')).toContain('目安の厚さ 1/5');
+  });
+
+  it('keeps the manual temperature when only the location changes', async () => {
+    saveWardrobe(SAMPLE_WARDROBE);
+    render(<App />);
+    await screen.findByText(/最高 15℃/);
+    fireEvent.click(screen.getByRole('button', { name: '気温を変える' }));
+    fireEvent.change(screen.getByPlaceholderText('例: 18'), { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('button', { name: /地点を変える/ }));
+    fireEvent.change(screen.getByLabelText('予報の地点'), { target: { value: 'osaka' } });
+    await settle();
+    expect(screen.getByTestId('cond-status').textContent).toContain('5℃ (手入力)');
+  });
+});
