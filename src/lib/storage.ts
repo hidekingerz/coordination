@@ -62,11 +62,23 @@ export function parseImportDetailed(text: string): ImportResult {
 
   const warnings: string[] = [];
   const items: ClothingItem[] = [];
+  /** id を省いた行に作った ID の使用回数。色違いなど名前・カテゴリ・ブランドが同じ行を見分ける */
+  const generated = new Map<string, number>();
   arr.forEach((raw, idx) => {
     const r = coerceItem(raw, idx);
     if (!r) {
       warnings.push(`${idx + 1}件目: 名前とカテゴリが無いためスキップしました`);
       return;
+    }
+    const hasOwnId = typeof (raw as { id?: unknown }).id === 'string' && Boolean((raw as { id: string }).id.trim());
+    if (!hasOwnId) {
+      // 1 件目は今までどおりの ID のまま (既存の Gist を取り込み直しても ID が変わらない)。2 件目以降に連番を付ける
+      const n = (generated.get(r.item.id) ?? 0) + 1;
+      generated.set(r.item.id, n);
+      if (n > 1) {
+        r.item.id = `${r.item.id}-${n}`;
+        r.warnings.push(`${idx + 1}件目「${r.item.name}」: 同じ名前・カテゴリ・ブランドの服が先にあるので ID を分けました (色違いなら id を付けると確実です)`);
+      }
     }
     items.push(r.item);
     warnings.push(...r.warnings);
