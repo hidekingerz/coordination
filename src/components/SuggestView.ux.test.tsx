@@ -128,7 +128,7 @@ describe('colour mode (#67)', () => {
     await screen.findByText(/最高 20℃/);
     // 閉じている間はセグメントが無い (条件欄の高さを増やさない)
     expect(screen.queryByRole('group', { name: '色合わせの基準' })).toBeNull();
-    const link = screen.getByRole('button', { name: /色合わせの基準を変える \(現在: 標準\)/ });
+    const link = screen.getByRole('button', { name: /^色合わせ: 標準/ });
     fireEvent.click(link);
     const group = screen.getByRole('group', { name: '色合わせの基準' });
     const italian = within(group).getByRole('button', { name: 'イタリア流' });
@@ -136,7 +136,7 @@ describe('colour mode (#67)', () => {
     fireEvent.click(italian);
     expect(italian.getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByText(/紺・グレーの土台に/)).toBeTruthy();
-    expect(screen.getByRole('button', { name: /色合わせの基準を変える \(現在: イタリア流\)/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^色合わせ: イタリア流/ })).toBeTruthy();
     expect(localStorage.getItem('coordination.colorMode.v1')).toBe('italian');
     await waitFor(() => expect(articlesText().join('')).toMatch(/アズーロ・エ・マローネ|トーン・オン・トーン|グレー × ブラウン/));
   });
@@ -145,6 +145,6 @@ describe('colour mode (#67)', () => {
     localStorage.setItem('coordination.colorMode.v1', 'british');
     renderView();
     await screen.findByText(/最高 20℃/);
-    expect(screen.getByRole('button', { name: /色合わせの基準を変える \(現在: イギリス流\)/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^色合わせ: イギリス流/ })).toBeTruthy();
   });
 });

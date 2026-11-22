@@ -101,3 +101,19 @@ describe('colorMode: definitions and storage', () => {
     expect(loadColorMode(storage)).toBe('standard');
   });
 });
+
+describe('colorMode: every deduction is shown as a warning', () => {
+  it('italian mode explains the vivid-accent deduction', () => {
+    const r = evaluatePaletteIn([NAVY, YELLOW], 'italian');
+    expect(r.warnings?.some((w) => w.includes('鮮やかな差し色'))).toBe(true);
+  });
+  it('british mode lists both deductions when navy × black meets brown in town', () => {
+    const r = evaluatePaletteIn([NAVY, BLACK, BROWN], 'british', { formality: 'smart' });
+    expect(r.warnings).toHaveLength(2);
+    expect(r.warnings?.join(' ')).toContain('紺と黒');
+    expect(r.warnings?.join(' ')).toContain('街着');
+  });
+  it('standard mode has no warnings', () => {
+    expect(evaluatePaletteIn([NAVY, YELLOW], 'standard').warnings ?? []).toEqual([]);
+  });
+});
