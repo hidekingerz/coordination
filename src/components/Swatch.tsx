@@ -4,6 +4,7 @@ export function Swatch({ color, size = 18, title }: { color: string; size?: numb
   return (
     <span
       className="swatch"
+      role="img"
       title={title ?? colorLabel(color)}
       style={{ background: color, width: size, height: size }}
       aria-label={title ?? colorLabel(color)}

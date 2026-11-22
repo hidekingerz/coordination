@@ -132,7 +132,7 @@ export function WardrobeView({ wardrobe, wearLog, onChange, onWear, onUnwear, on
       </div>
 
       <div className="chips filter">
-        <select className="sort" value={sort} onChange={(e) => setSort(e.target.value as SortMode)} title="並び順">
+        <select className="sort" value={sort} onChange={(e) => setSort(e.target.value as SortMode)} title="並び順" aria-label="並び順">
           <option value="category">カテゴリ順</option>
           <option value="unworn">着ていない順</option>
           <option value="recent">最近着た順</option>
@@ -153,7 +153,7 @@ export function WardrobeView({ wardrobe, wearLog, onChange, onWear, onUnwear, on
       </div>
 
       {brands.length > 0 && (
-        <div className="chips filter brands" aria-label="ブランドで絞り込み">
+        <div className="chips filter brands" role="group" aria-label="ブランドで絞り込み">
           <button type="button" className={`chip ${activeBrand === 'all' ? 'on' : ''}`} onClick={() => setBrand('all')}>
             全ブランド
           </button>
